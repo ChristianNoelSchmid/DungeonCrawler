@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{enums::RelResult, types::DatagramType};
+use super::enums::RelResult;
 
 pub struct AckResolver {
     pub addr: SocketAddr,
@@ -109,8 +109,7 @@ impl AckHandler {
                 return if index_from == 0 {
                     self.next_from.insert(addr, 1);
                     RelResult::NewRel
-                }
-                else {
+                } else {
                     RelResult::NeedsRes
                 }
             }
@@ -128,10 +127,10 @@ impl AckHandler {
                 } else if index > index_from {
                     RelResult::RepeatedRel
                 } else {
-                    // Otherwise, it's too high: request the client to 
+                    // Otherwise, it's too high: request the client to
                     // resend its reliable messages stored in its own resolver
                     RelResult::NeedsRes
-                }
+                };
             }
         }
     }
