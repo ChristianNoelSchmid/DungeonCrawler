@@ -12,3 +12,10 @@ pub enum HandlerState {
     Stopped,
     Dropped,
 }
+
+#[derive(PartialEq, Eq)]
+pub enum RelResult {
+    NewRel,
+    RepeatedRel,
+    NeedsRes,
+}

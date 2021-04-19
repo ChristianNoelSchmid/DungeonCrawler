@@ -4,7 +4,8 @@ pub mod dungeon {
 }
 
 pub mod datagram {
-    pub mod resolver;
     pub mod enums;
     pub mod handler;
+    pub mod resolver;
+    pub mod types;
 }
