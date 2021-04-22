@@ -1,19 +1,11 @@
-use std::net::SocketAddr;
-
-pub enum SendTo {
-    One(SocketAddr),
-    AllBut(SocketAddr),
-    All,
-}
-
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum HandlerState {
     Listening,
     Stopped,
     Dropped,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum RelResult {
     NewRel,
     RepeatedRel,

@@ -4,7 +4,8 @@
 //! CS510 - Rust Programming
 
 use super::{
-    enums::{HandlerState, RelResult, SendTo},
+    enums::{HandlerState, RelResult},
+    packets::{ReceivePacket, SendPacket},
     resolver::AckHandler,
     types::Type,
 };
@@ -12,8 +13,7 @@ use super::{
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
 use std::{
-    net::{SocketAddr, UdpSocket},
-    str::FromStr,
+    net::UdpSocket,
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -26,21 +26,22 @@ use std::{
 ///
 /// The datagrams sent by clients are
 /// parsed into their appropriate types, and handled
-/// based on type (see datagram/type.rs)
+/// based on type (see datagram/types.rs)
 ///
 pub struct DatagramHandler {
     // A crossbeam Sender, which server threads can
     // use to send clients datagrams
-    s_to_clients: Sender<(SendTo, bool, String)>,
+    s_to_clients: Sender<SendPacket>,
     // A crossbeam Receiver, which server threads can
     // use to listen for client datagrams
-    r_from_clients: Receiver<(SocketAddr, String)>,
+    r_from_clients: Receiver<ReceivePacket>,
 
-    // A crossbeam Sender, which allows the DatagramHandler
+    // Two crossbeam Senders, which allows the DatagramHandler
     // thread to communicate to its constituent threads
     // the state of the handler (ie. listening, or not listening,
     // aborting)
-    s_handler_state: Sender<HandlerState>,
+    s_to_clients_state: Sender<HandlerState>,
+    s_from_clients_state: Sender<HandlerState>,
 }
 
 impl DatagramHandler {
@@ -63,39 +64,33 @@ impl DatagramHandler {
 
         // Create the channels which will handle synchronizing
         // state between handler threads
-        let (s_handler_state, r_handler_state) = unbounded();
+        let (s_to_clients_state, r_to_clients_state) = unbounded();
+        let (s_from_clients_state, r_from_clients_state) = unbounded();
 
         // Begin the thread where the socket recieves datagrams from
         // clients, parses them, and passes relevant information,
         // to other threads in the server
-        let r_from_clients = Self::receive_clients_loop(
-            socket.clone(),
-            ack_resolver.clone(),
-            r_handler_state.clone(),
-        );
+        let r_from_clients =
+            Self::receive_clients_loop(socket.clone(), ack_resolver.clone(), r_from_clients_state);
 
         // Begin the thread where the socket awaits other threads
         // in the server to send information to clients its
         // connected with
-        let s_to_clients =
-            Self::transmit_to_clients_loop(socket.clone(), ack_resolver.clone(), r_handler_state);
+        let s_to_clients = Self::transmit_to_clients_loop(socket, ack_resolver, r_to_clients_state);
 
         Ok(Self {
-            s_to_clients: s_to_clients.clone(),
-            r_from_clients: r_from_clients.clone(),
-            s_handler_state,
+            s_to_clients,
+            r_from_clients,
+
+            s_to_clients_state,
+            s_from_clients_state,
         })
     }
 
     ///
     /// Clones a `Sender` and `Receiver`, to be used in other systems
     ///
-    pub fn get_sender_receiver(
-        &self,
-    ) -> (
-        Sender<(SendTo, bool, String)>,
-        Receiver<(SocketAddr, String)>,
-    ) {
+    pub fn get_sender_receiver(&self) -> (Sender<SendPacket>, Receiver<ReceivePacket>) {
         (self.s_to_clients.clone(), self.r_from_clients.clone())
     }
 
@@ -104,13 +99,14 @@ impl DatagramHandler {
     /// and receiving of data, determined by `is_listening`.
     ///
     pub fn set_listening(&mut self, is_listening: bool) {
-        self.s_handler_state
-            .send(if is_listening {
-                HandlerState::Listening
-            } else {
-                HandlerState::Stopped
-            })
-            .unwrap();
+        let state = if is_listening {
+            HandlerState::Listening
+        } else {
+            HandlerState::Stopped
+        };
+
+        self.s_from_clients_state.send(state).unwrap();
+        self.s_to_clients_state.send(state).unwrap();
     }
 
     ///
@@ -121,81 +117,73 @@ impl DatagramHandler {
         socket: Arc<Mutex<UdpSocket>>,
         ack_resolver: Arc<Mutex<AckHandler>>,
         r_handler_state: Receiver<HandlerState>,
-    ) -> Receiver<(SocketAddr, String)> {
+    ) -> Receiver<ReceivePacket> {
         // Create the Sender and Receiver
-        let (s, r): (_, Receiver<(SocketAddr, String)>) = unbounded();
+        let (s, r): (_, Receiver<ReceivePacket>) = unbounded();
         let mut state = HandlerState::Listening;
 
         // Spawn a new thread, and move the Sender.
         // The thread undergoes an infinite loop, awaiting
         // datagrams received by the socket
         std::thread::spawn(move || loop {
-            if let Ok(new_state) = r_handler_state.recv_timeout(Duration::from_millis(5)) {
-                state = new_state;
-            }
-
+            state = r_handler_state.try_recv().unwrap_or(state);
             let mut buf = [0; 100];
-
-            // Check if there are any ack resolvers which have timed out
-            // if so, send them
-            for resolver in ack_resolver.lock().unwrap().retrieve_timeouts() {
-                socket
-                    .lock()
-                    .unwrap()
-                    .send_to(
-                        &Type::to_buffer(Type::Rel(resolver.index, resolver.msg.to_string())),
-                        resolver.addr,
-                    )
-                    .unwrap();
-            }
 
             match state {
                 HandlerState::Dropped => break,
                 HandlerState::Stopped => continue,
-                HandlerState::Listening => {
-                    // Retrieve a lock on the sockets, to be used
-                    // throughout the whole block
-                    if let Ok(sock) = socket.lock() {
-                        // If a datagram has been received be socket
-                        if let Ok((amt, src)) = sock.recv_from(&mut buf) {
-                            // Convert the buffer into a string, and parse the
-                            // string as a DatagramType
-                            let buf = &buf[..amt];
-                            let datagram =
-                                Type::from_str(&String::from_utf8(buf.to_vec()).unwrap()).unwrap();
+                HandlerState::Listening => {}
+            }
 
-                            match datagram {
-                                // Have the Transmitter send the relevant data
-                                // to the Receiver
-                                // Unreliable messages are simply forwarded
-                                Type::Unrel(data) => s.send((src, data)).unwrap(),
-                                // Reliable messages are compared with the AckResolver cache
-                                // to determine if they are in order. If not, request a resend.
-                                Type::Rel(ack_index, data) => {
-                                    let rel_result =
-                                        ack_resolver.lock().unwrap().check_rel(src, ack_index);
-                                    if rel_result == RelResult::NewRel {
-                                        s.send((src, data)).unwrap()
-                                    }
-                                    sock.send_to(
-                                        &Type::to_buffer(if rel_result == RelResult::NeedsRes {
-                                            Type::Res
-                                        } else {
-                                            Type::Ack(ack_index)
-                                        }),
-                                        src,
-                                    )
-                                    .unwrap();
+            // Retrieve a lock on the socket
+            if let Ok(sock) = socket.lock() {
+                // Retrieve a lock on the AckHandler
+                if let Ok(mut resolver) = ack_resolver.lock() {
+                    // Check if there are any ack resolvers which have timed out
+                    // if so, send them
+                    for res in resolver.retrieve_timeouts().iter() {
+                        sock.send_to(
+                            &Type::to_buffer(Type::Rel(res.index, res.msg.to_string())),
+                            res.addr,
+                        )
+                        .unwrap();
+                    }
+
+                    // If a datagram has been received be socket
+                    if let Ok((amt, addr)) = sock.recv_from(&mut buf) {
+                        // Convert the buffer into a string, and parse the
+                        // string as a DatagramType
+                        let buf = &buf[..amt];
+                        let datagram = Type::from_str(&String::from_utf8(buf.to_vec()).unwrap());
+
+                        match datagram {
+                            // Have the Transmitter send the relevant data
+                            // to the Receiver
+                            // Unreliable messages are simply forwarded
+                            Type::Unrel(data) => s.send(ReceivePacket { addr, msg: data }).unwrap(),
+                            // Reliable messages are compared with the AckResolver cache
+                            // to determine if they are in order. If not, request a resend.
+                            Type::Rel(ack_index, data) => {
+                                let rel_result = resolver.check_rel(addr, ack_index);
+                                if rel_result == RelResult::NewRel {
+                                    s.send(ReceivePacket { addr, msg: data }).unwrap()
                                 }
-                                // Ack messages are forwarded to the AckResolver,
-                                // which accepts the ack, removing a resolver for the cache
-                                Type::Ack(ack_index) => ack_resolver
-                                    .lock()
-                                    .unwrap()
-                                    .accept_ack(src, ack_index)
-                                    .unwrap(),
-                                Type::Res => {}
+                                sock.send_to(
+                                    &Type::to_buffer(if rel_result == RelResult::NeedsRes {
+                                        Type::Res
+                                    } else {
+                                        Type::Ack(ack_index)
+                                    }),
+                                    addr,
+                                )
+                                .unwrap();
                             }
+                            // Ack messages are forwarded to the AckResolver,
+                            // which accepts the ack, removing a resolver for the cache
+                            Type::Ack(ack_index) => {
+                                resolver.accept_ack(addr, ack_index);
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -214,50 +202,58 @@ impl DatagramHandler {
         socket: Arc<Mutex<UdpSocket>>,
         ack_resolver: Arc<Mutex<AckHandler>>,
         r_handler_state: Receiver<HandlerState>,
-    ) -> Sender<(SendTo, bool, String)> {
+    ) -> Sender<SendPacket> {
         // Create the Sender and Receiver
-        let (s, r): (_, Receiver<(SendTo, bool, String)>) = unbounded();
+        let (s, r): (Sender<SendPacket>, _) = unbounded();
         let mut state = HandlerState::Listening;
 
         // Spawn a new thread, and move the Receiver.
         // The thread undergoes an infinite loop, awaiting
         // datagrams that the server wishes to send
         std::thread::spawn(move || loop {
-            if let Ok(new_state) = r_handler_state.recv_timeout(Duration::from_millis(5)) {
-                state = new_state;
-            }
+            state = r_handler_state.try_recv().unwrap_or(state);
 
             match state {
                 HandlerState::Dropped => break,
                 HandlerState::Stopped => continue,
-                HandlerState::Listening => {
-                    // If Ok, determine which clients the
-                    // server wishes to send the datagrams to
-                    if let Ok(data) = r.recv_timeout(Duration::from_millis(5)) {
-                        match data.0 {
-                            SendTo::One(addr) => {
-                                let data_buffer = match data.1 {
-                                    true => Type::to_buffer(Type::Rel(
-                                        ack_resolver
-                                            .lock()
-                                            .unwrap()
-                                            .create_rel_resolver(addr, data.2.clone()),
-                                        data.2,
-                                    )),
-                                    false => Type::to_buffer(Type::Unrel(data.2)),
-                                };
-                                socket
-                                    .lock()
-                                    .unwrap()
-                                    .send_to(&data_buffer, addr)
-                                    .expect("Failed to send data through the server socket");
+                HandlerState::Listening => {}
+            }
+
+            // If Ok, determine which clients the
+            // server wishes to send the datagrams to
+            if let Ok(data) = r.try_recv() {
+                let mut clients = Vec::new();
+                let SendPacket { addrs, is_rel, msg } = data;
+
+                for addr in addrs {
+                    clients.push(addr);
+                }
+
+                if let Ok(sock) = socket.lock() {
+                    if is_rel {
+                        if let Ok(mut resolver) = ack_resolver.lock() {
+                            for client in clients {
+                                sock.send_to(
+                                    &Type::Rel(
+                                        resolver.create_rel_resolver(client, msg.clone()),
+                                        msg.clone(),
+                                    )
+                                    .to_buffer(),
+                                    client,
+                                )
+                                .unwrap();
                             }
-                            SendTo::AllBut(_) => {}
-                            SendTo::All => {}
+                        }
+                    } else {
+                        for client in clients {
+                            sock.send_to(&Type::Unrel(msg.clone()).to_buffer(), client)
+                                .unwrap();
                         }
                     }
                 }
             }
+            // Yield the thread (so it won't immediately lock the socket again)
+            thread::yield_now();
         });
 
         s
@@ -268,6 +264,9 @@ impl Drop for DatagramHandler {
     // Ensure the listening / receiving threads are dropped
     // when the DatagramHandler leaves scope
     fn drop(&mut self) {
-        self.s_handler_state.send(HandlerState::Dropped).unwrap();
+        self.s_to_clients_state.send(HandlerState::Dropped).unwrap();
+        self.s_from_clients_state
+            .send(HandlerState::Dropped)
+            .unwrap();
     }
 }

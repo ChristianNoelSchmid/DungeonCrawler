@@ -6,18 +6,23 @@ use std::{
 
 use super::enums::RelResult;
 
+const MAX_RETRIES: usize = 100;
+
 pub struct AckResolver {
     pub addr: SocketAddr,
     pub index: u64,
     pub msg: String,
-    pub start_time: Instant,
+
+    start_time: Instant,
+    last_update_time: Instant,
+    attempt_count: usize,
 }
 
 pub struct AckHandler {
     next_to: HashMap<SocketAddr, u64>,
     next_from: HashMap<SocketAddr, u64>,
     resolvers: HashMap<SocketAddr, VecDeque<AckResolver>>,
-    timeout: Duration,
+    timeouts: HashMap<SocketAddr, Duration>,
 }
 
 impl AckHandler {
@@ -26,34 +31,29 @@ impl AckHandler {
             next_to: HashMap::new(),
             next_from: HashMap::new(),
             resolvers: HashMap::new(),
-            timeout: Duration::from_millis(500),
+            timeouts: HashMap::new(),
         }
     }
 
-    pub fn accept_ack(&mut self, addr: SocketAddr, index: u64) -> Result<(), &str> {
-        if self.next_from.contains_key(&addr) {
-            let next_index = self.next_from[&addr];
+    pub fn accept_ack(&mut self, addr: SocketAddr, index: u64) {
+        let mut pop_back = false;
+        if let Some(resolver_list) = self.resolvers.get_mut(&addr) {
+            if let Some(resolver) = resolver_list.back() {
+                if resolver.index == index {
+                    // Set the new timeout as the average between the
+                    // current timeout and time the RTT took for the
+                    // Ack datagram
+                    let lifespan = Instant::now() - resolver.start_time;
+                    let timeout_secs = (self.timeouts[&addr] + lifespan) / 2;
 
-            return if next_index < index {
-                Ok(())
-            } else if next_index == index {
-                let resolver = self.resolvers.get_mut(&addr).unwrap().pop_back().unwrap();
-
-                // Set the new timeout as the average between the
-                // current timeout and time the RTT took for the
-                // Ack datagram
-                let lifespan = Instant::now() - resolver.start_time;
-                self.timeout += lifespan;
-                self.timeout /= 2;
-
-                // Increment the expected ack
-                self.next_from.insert(addr, index + 1);
-                Ok(())
-            } else {
-                Err("Ack received gt current index.")
-            };
+                    self.timeouts.insert(addr, timeout_secs);
+                    pop_back = true;
+                }
+            }
+            if pop_back {
+                resolver_list.pop_back();
+            }
         }
-        Err("SocketAddr does not exist.")
     }
 
     ///
@@ -67,8 +67,8 @@ impl AckHandler {
         let next_to_index;
 
         // Check if a reliable datagram has already been sent to this client,
-        // and if so, grab the next index. Otherwise, add the client to next_to,
-        // and create a new resolver list
+        // and if so, grab the next index. Otherwise, add the client to next_to and
+        // next_from, and create a new resolver list
         if !self.next_to.contains_key(&addr) {
             next_to_index = 0;
             self.next_to.insert(addr, 1);
@@ -84,9 +84,14 @@ impl AckHandler {
             msg,
             index: next_to_index,
             start_time: Instant::now(),
+            last_update_time: Instant::now(),
+            attempt_count: 0,
         };
 
         self.resolvers.get_mut(&addr).unwrap().insert(0, resolver);
+        if !self.timeouts.contains_key(&addr) {
+            self.timeouts.insert(addr, Duration::from_millis(500));
+        }
 
         next_to_index
     }
@@ -138,8 +143,16 @@ impl AckHandler {
         let mut resolvers = Vec::new();
         for list in self.resolvers.values_mut() {
             if let Some(resolver) = list.back_mut() {
-                if Instant::now() - resolver.start_time > self.timeout {
-                    resolver.start_time = Instant::now();
+                if Instant::now() - resolver.last_update_time > self.timeouts[&resolver.addr] {
+                    // If the AckHandler has attempted to send a rel datagram
+                    // MAX_RETRIES times, drop the datagram
+                    if resolver.attempt_count >= MAX_RETRIES {
+                        continue;
+                    }
+
+                    resolver.last_update_time = Instant::now();
+                    resolver.attempt_count += 1;
+
                     resolvers.push(resolver);
                 }
             }
