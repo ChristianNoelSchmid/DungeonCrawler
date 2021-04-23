@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rpg_server::dungeon::inst::Dungeon;
+use rpg_server::dungeons::inst::Dungeon;
 
 #[test]
 fn test_100() {

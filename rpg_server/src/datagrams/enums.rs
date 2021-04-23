@@ -10,4 +10,5 @@ pub enum RelResult {
     NewRel,
     RepeatedRel,
     NeedsRes,
+    ClientDropped,
 }

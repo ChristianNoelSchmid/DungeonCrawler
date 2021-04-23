@@ -111,12 +111,19 @@ impl AckHandler {
             // be 0 (initial contact). If it's not, ask the client
             // to resend. Otherwise establish the new client and sent an Ack.
             None => {
+                // If the client isn't in the server's cache, but the
+                // ack index is 0, this represents a new connection.
+                // Add the client addr to the cache, and return NewRel
                 return if index_from == 0 {
                     self.next_from.insert(addr, 1);
                     RelResult::NewRel
                 } else {
-                    RelResult::NeedsRes
-                }
+                    // If the client isn't in the server's cache, and it's
+                    // ack index is above 0, the server assumes that the
+                    // client was previously connected, but has been dropped.
+                    // Inform the client of such!
+                    RelResult::ClientDropped
+                };
             }
             // If there already is a ack index in the cache, see if
             // it matches the index received

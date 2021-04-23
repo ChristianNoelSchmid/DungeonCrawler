@@ -16,7 +16,6 @@ use std::{
     net::UdpSocket,
     sync::{Arc, Mutex},
     thread,
-    time::Duration,
 };
 
 ///
@@ -52,10 +51,7 @@ impl DatagramHandler {
     pub fn new(port: u32) -> std::io::Result<Self> {
         // Attempt to create the UdpSocket.
         let socket = UdpSocket::bind(format!("127.0.0.1:{}", port))?;
-
-        // Set the UdpSocket's read timeout to 5 milliseconds,
-        // to avoid blocking data being sent by the socket
-        socket.set_read_timeout(Some(Duration::from_millis(5)))?;
+        socket.set_nonblocking(true)?;
 
         // Convert the socket to a Arc Mutex, for concurrency
         let socket = Arc::new(Mutex::new(socket));
@@ -136,56 +132,57 @@ impl DatagramHandler {
             }
 
             // Retrieve a lock on the socket
-            if let Ok(sock) = socket.lock() {
-                // Retrieve a lock on the AckHandler
-                if let Ok(mut resolver) = ack_resolver.lock() {
-                    // Check if there are any ack resolvers which have timed out
-                    // if so, send them
-                    for res in resolver.retrieve_timeouts().iter() {
-                        sock.send_to(
-                            &Type::to_buffer(Type::Rel(res.index, res.msg.to_string())),
-                            res.addr,
-                        )
-                        .unwrap();
-                    }
+            let socket = socket.lock().unwrap();
+            // Retrieve a lock on the AckHandler
+            let mut ack_resolver = ack_resolver.lock().unwrap();
 
-                    // If a datagram has been received be socket
-                    if let Ok((amt, addr)) = sock.recv_from(&mut buf) {
-                        // Convert the buffer into a string, and parse the
-                        // string as a DatagramType
-                        let buf = &buf[..amt];
-                        let datagram = Type::from_str(&String::from_utf8(buf.to_vec()).unwrap());
+            // Check if there are any ack resolvers which have timed out
+            // if so, send them
+            for res in ack_resolver.retrieve_timeouts().iter() {
+                socket
+                    .send_to(
+                        &Type::to_buffer(Type::Rel(res.index, res.msg.to_string())),
+                        res.addr,
+                    )
+                    .unwrap();
+            }
 
-                        match datagram {
-                            // Have the Transmitter send the relevant data
-                            // to the Receiver
-                            // Unreliable messages are simply forwarded
-                            Type::Unrel(data) => s.send(ReceivePacket { addr, msg: data }).unwrap(),
-                            // Reliable messages are compared with the AckResolver cache
-                            // to determine if they are in order. If not, request a resend.
-                            Type::Rel(ack_index, data) => {
-                                let rel_result = resolver.check_rel(addr, ack_index);
-                                if rel_result == RelResult::NewRel {
-                                    s.send(ReceivePacket { addr, msg: data }).unwrap()
-                                }
-                                sock.send_to(
-                                    &Type::to_buffer(if rel_result == RelResult::NeedsRes {
-                                        Type::Res
-                                    } else {
-                                        Type::Ack(ack_index)
-                                    }),
-                                    addr,
-                                )
-                                .unwrap();
-                            }
-                            // Ack messages are forwarded to the AckResolver,
-                            // which accepts the ack, removing a resolver for the cache
-                            Type::Ack(ack_index) => {
-                                resolver.accept_ack(addr, ack_index);
-                            }
-                            _ => {}
+            // If a datagram has been received be socket
+            if let Ok((amt, addr)) = socket.recv_from(&mut buf) {
+                // Convert the buffer into a string, and parse the
+                // string as a DatagramType
+                let buf = &buf[..amt];
+                let datagram = Type::from_str(&String::from_utf8(buf.to_vec()).unwrap());
+
+                match datagram {
+                    // Have the Transmitter send the relevant data
+                    // to the Receiver
+                    // Unreliable messages are simply forwarded
+                    Type::Unrel(data) => s.send(ReceivePacket { addr, msg: data }).unwrap(),
+                    // Reliable messages are compared with the AckResolver cache
+                    // to determine if they are in order. If not, request a resend.
+                    Type::Rel(ack_index, data) => {
+                        let rel_result = ack_resolver.check_rel(addr, ack_index);
+                        if rel_result == RelResult::NewRel {
+                            s.send(ReceivePacket { addr, msg: data }).unwrap()
                         }
+                        socket
+                            .send_to(
+                                &Type::to_buffer(match rel_result {
+                                    RelResult::NeedsRes => Type::Res,
+                                    RelResult::ClientDropped => Type::Drop,
+                                    _ => Type::Ack(ack_index),
+                                }),
+                                addr,
+                            )
+                            .unwrap();
                     }
+                    // Ack messages are forwarded to the AckResolver,
+                    // which accepts the ack, removing a resolver for the cache
+                    Type::Ack(ack_index) => {
+                        ack_resolver.accept_ack(addr, ack_index);
+                    }
+                    _ => {}
                 }
             }
             // Yield the thread (so it won't immediately lock the socket again)
@@ -229,31 +226,31 @@ impl DatagramHandler {
                     clients.push(addr);
                 }
 
-                if let Ok(sock) = socket.lock() {
-                    if is_rel {
-                        if let Ok(mut resolver) = ack_resolver.lock() {
-                            for client in clients {
-                                sock.send_to(
-                                    &Type::Rel(
-                                        resolver.create_rel_resolver(client, msg.clone()),
-                                        msg.clone(),
-                                    )
-                                    .to_buffer(),
-                                    client,
+                let socket = socket.lock().unwrap();
+                if is_rel {
+                    let mut ack_resolver = ack_resolver.lock().unwrap();
+                    for client in clients {
+                        socket
+                            .send_to(
+                                &Type::Rel(
+                                    ack_resolver.create_rel_resolver(client, msg.clone()),
+                                    msg.clone(),
                                 )
-                                .unwrap();
-                            }
-                        }
-                    } else {
-                        for client in clients {
-                            sock.send_to(&Type::Unrel(msg.clone()).to_buffer(), client)
-                                .unwrap();
-                        }
+                                .to_buffer(),
+                                client,
+                            )
+                            .unwrap();
+                    }
+                } else {
+                    for client in clients {
+                        socket
+                            .send_to(&Type::Unrel(msg.clone()).to_buffer(), client)
+                            .unwrap();
                     }
                 }
+                // Yield the thread (so it won't immediately lock the socket again)
+                thread::yield_now();
             }
-            // Yield the thread (so it won't immediately lock the socket again)
-            thread::yield_now();
         });
 
         s

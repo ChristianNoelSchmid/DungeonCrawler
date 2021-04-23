@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod datagram_handler_tests {
 
-    use rpg_server::datagram::{
+    use rpg_server::datagrams::{
         handler::DatagramHandler,
         packets::{ReceivePacket, SendPacket},
     };
-    use std::{net::SocketAddr, str::FromStr, time::Duration};
+    use std::{net::SocketAddr, str::FromStr, thread, time::Duration};
 
     fn gen_handlers(port1: u32, port2: u32) -> (DatagramHandler, DatagramHandler) {
         return (
@@ -46,6 +46,56 @@ mod datagram_handler_tests {
         let ReceivePacket { addr, msg } = r1.recv().unwrap();
         assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2001").unwrap());
         assert_eq!(msg, "Hi there!");
+    }
+
+    #[test]
+    fn test_bulk_send() {
+        let (h1, h2) = gen_handlers(2004, 2005);
+
+        let (s1, r1) = h1.get_sender_receiver();
+        let (s2, r2) = h2.get_sender_receiver();
+
+        thread::spawn(move || {
+            for _ in 0..50 {
+                s1.send(SendPacket {
+                    addrs: vec![SocketAddr::from_str("127.0.0.1:2005").unwrap()],
+                    is_rel: false,
+                    msg: "Hello!".to_string(),
+                })
+                .unwrap();
+            }
+        })
+        .join()
+        .unwrap();
+
+        thread::spawn(move || {
+            for _ in 0..50 {
+                s2.send(SendPacket {
+                    addrs: vec![SocketAddr::from_str("127.0.0.1:2004").unwrap()],
+                    is_rel: false,
+                    msg: "Hello!".to_string(),
+                })
+                .unwrap();
+            }
+        })
+        .join()
+        .unwrap();
+
+        thread::spawn(move || {
+            for _ in 0..50 {
+                r1.recv().unwrap();
+            }
+        })
+        .join()
+        .unwrap();
+
+        thread::spawn(move || {
+            for _ in 0..50 {
+                r2.recv().unwrap();
+            }
+        })
+        .join()
+        .unwrap();
     }
 
     ///
