@@ -50,13 +50,14 @@ fn main() -> std::io::Result<()> {
 
     let mut count = 0;
     loop {
-        let ReceivePacket { msg, .. } = r3.recv().unwrap();
-        count += 1;
+        if let ReceivePacket::ClientMessage(_, msg) = r3.recv().unwrap() {
+            count += 1;
 
-        if PRINT_UUIDS {
-            println!("{} >> {}", msg, count);
-        } else if count % 1000 == 0 {
-            println!("{}", count);
+            if PRINT_UUIDS {
+                println!("{} >> {}", msg, count);
+            } else if count % 1000 == 0 {
+                println!("{}", count);
+            }
         }
     }
 }

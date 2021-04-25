@@ -16,7 +16,7 @@ fn main() -> std::io::Result<()> {
     println!("Send a message to this server and receive a datagram in response!");
 
     loop {
-        if let Ok(ReceivePacket { addr, msg }) = r.recv() {
+        if let Ok(ReceivePacket::ClientMessage(addr, msg)) = r.recv() {
             println!(
                 "Recieved string from {:?}: \"{}\"",
                 addr,

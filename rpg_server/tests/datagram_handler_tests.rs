@@ -32,9 +32,12 @@ mod datagram_handler_tests {
         })
         .unwrap();
 
-        let ReceivePacket { addr, msg } = r2.recv().unwrap();
-        assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2000").unwrap());
-        assert_eq!(msg, "Hello!");
+        if let ReceivePacket::ClientMessage(addr, msg) = r2.recv().unwrap() {
+            assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2000").unwrap());
+            assert_eq!(msg, "Hello!");
+        } else {
+            panic!("Recieved ClientDropped message");
+        }
 
         s2.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2000").unwrap()],
@@ -43,9 +46,12 @@ mod datagram_handler_tests {
         })
         .unwrap();
 
-        let ReceivePacket { addr, msg } = r1.recv().unwrap();
-        assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2001").unwrap());
-        assert_eq!(msg, "Hi there!");
+        if let ReceivePacket::ClientMessage(addr, msg) = r1.recv().unwrap() {
+            assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2001").unwrap());
+            assert_eq!(msg, "Hi there!");
+        } else {
+            panic!("Recieved ClientDropped message");
+        }
     }
 
     #[test]
@@ -144,13 +150,16 @@ mod datagram_handler_tests {
         h1.set_listening(true);
 
         // The messages received should be received in this order.
-        let ReceivePacket { msg, .. } = r1.recv().unwrap();
-        assert_eq!(msg, "Hi!");
+        if let ReceivePacket::ClientMessage(_, msg) = r1.recv().unwrap() {
+            assert_eq!(msg, "Hi!");
+        }
 
-        let ReceivePacket { msg, .. } = r1.recv().unwrap();
-        assert_eq!(msg, "there!");
+        if let ReceivePacket::ClientMessage(_, msg) = r1.recv().unwrap() {
+            assert_eq!(msg, "there!");
+        }
 
-        let ReceivePacket { msg, .. } = r1.recv().unwrap();
-        assert_eq!(msg, "Once more!");
+        if let ReceivePacket::ClientMessage(_, msg) = r1.recv().unwrap() {
+            assert_eq!(msg, "Once more!");
+        }
     }
 }

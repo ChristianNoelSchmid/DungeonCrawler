@@ -5,7 +5,11 @@
 
 use super::{
     enums::{HandlerState, RelResult},
-    packets::{ReceivePacket, SendPacket},
+    packets::{
+        PacketReceiver, PacketSender, ReceivePacket,
+        ReceivePacket::{ClientMessage, DroppedClient},
+        SendPacket,
+    },
     resolver::AckHandler,
     types::Type,
 };
@@ -13,10 +17,14 @@ use super::{
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
 use std::{
-    net::UdpSocket,
+    collections::HashMap,
+    net::{SocketAddr, UdpSocket},
     sync::{Arc, Mutex},
     thread,
+    time::{Duration, Instant},
 };
+
+const DEFAULT_DROP_TIME: Duration = Duration::from_secs(5);
 
 ///
 /// A udp datagram handler, which recieves
@@ -28,12 +36,10 @@ use std::{
 /// based on type (see datagram/types.rs)
 ///
 pub struct DatagramHandler {
-    // A crossbeam Sender, which server threads can
+    // A PacketSender, which server threads can
     // use to send clients datagrams
-    s_to_clients: Sender<SendPacket>,
-    // A crossbeam Receiver, which server threads can
-    // use to listen for client datagrams
-    r_from_clients: Receiver<ReceivePacket>,
+    packet_sender: PacketSender,
+    packet_receiver: PacketReceiver,
 
     // Two crossbeam Senders, which allows the DatagramHandler
     // thread to communicate to its constituent threads
@@ -74,9 +80,12 @@ impl DatagramHandler {
         // connected with
         let s_to_clients = Self::transmit_to_clients_loop(socket, ack_resolver, r_to_clients_state);
 
+        let packet_sender = PacketSender::new(s_to_clients);
+        let packet_receiver = PacketReceiver::new(r_from_clients);
+
         Ok(Self {
-            s_to_clients,
-            r_from_clients,
+            packet_sender,
+            packet_receiver,
 
             s_to_clients_state,
             s_from_clients_state,
@@ -86,8 +95,8 @@ impl DatagramHandler {
     ///
     /// Clones a `Sender` and `Receiver`, to be used in other systems
     ///
-    pub fn get_sender_receiver(&self) -> (Sender<SendPacket>, Receiver<ReceivePacket>) {
-        (self.s_to_clients.clone(), self.r_from_clients.clone())
+    pub fn get_sender_receiver(&self) -> (PacketSender, PacketReceiver) {
+        (self.packet_sender.clone(), self.packet_receiver.clone())
     }
 
     ///
@@ -117,6 +126,7 @@ impl DatagramHandler {
         // Create the Sender and Receiver
         let (s, r): (_, Receiver<ReceivePacket>) = unbounded();
         let mut state = HandlerState::Listening;
+        let mut client_ping_times = HashMap::<SocketAddr, Instant>::new();
 
         // Spawn a new thread, and move the Sender.
         // The thread undergoes an infinite loop, awaiting
@@ -136,6 +146,22 @@ impl DatagramHandler {
             // Retrieve a lock on the AckHandler
             let mut ack_resolver = ack_resolver.lock().unwrap();
 
+            // Check if there are any addrs that have timed out. If so
+            // remove them from the resolver, and push the message up
+            let now = Instant::now();
+            let mut client_addrs = Vec::new();
+            for (k, v) in &client_ping_times {
+                if (now - *v) > DEFAULT_DROP_TIME {
+                    client_addrs.push(k.clone());
+                }
+            }
+
+            for addr in client_addrs {
+                ack_resolver.remove_client(addr);
+                s.send(DroppedClient(addr)).unwrap();
+                client_ping_times.remove(&addr);
+            }
+
             // Check if there are any ack resolvers which have timed out
             // if so, send them
             for res in ack_resolver.retrieve_timeouts().iter() {
@@ -154,17 +180,19 @@ impl DatagramHandler {
                 let buf = &buf[..amt];
                 let datagram = Type::from_str(&String::from_utf8(buf.to_vec()).unwrap());
 
+                client_ping_times.insert(addr, Instant::now());
+
                 match datagram {
                     // Have the Transmitter send the relevant data
                     // to the Receiver
                     // Unreliable messages are simply forwarded
-                    Type::Unrel(data) => s.send(ReceivePacket { addr, msg: data }).unwrap(),
+                    Type::Unrel(data) => s.send(ClientMessage(addr, data)).unwrap(),
                     // Reliable messages are compared with the AckResolver cache
                     // to determine if they are in order. If not, request a resend.
                     Type::Rel(ack_index, data) => {
                         let rel_result = ack_resolver.check_rel(addr, ack_index);
                         if rel_result == RelResult::NewRel {
-                            s.send(ReceivePacket { addr, msg: data }).unwrap()
+                            s.send(ClientMessage(addr, data)).unwrap()
                         }
                         socket
                             .send_to(

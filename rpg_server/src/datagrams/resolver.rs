@@ -6,8 +6,6 @@ use std::{
 
 use super::enums::RelResult;
 
-const MAX_RETRIES: usize = 100;
-
 pub struct AckResolver {
     pub addr: SocketAddr,
     pub index: u64,
@@ -15,7 +13,6 @@ pub struct AckResolver {
 
     start_time: Instant,
     last_update_time: Instant,
-    attempt_count: usize,
 }
 
 pub struct AckHandler {
@@ -85,7 +82,6 @@ impl AckHandler {
             index: next_to_index,
             start_time: Instant::now(),
             last_update_time: Instant::now(),
-            attempt_count: 0,
         };
 
         self.resolvers.get_mut(&addr).unwrap().insert(0, resolver);
@@ -146,20 +142,19 @@ impl AckHandler {
             }
         }
     }
+
+    pub fn remove_client(&mut self, addr: SocketAddr) {
+        self.resolvers.remove(&addr);
+        self.next_from.remove(&addr);
+        self.next_to.remove(&addr);
+    }
+
     pub fn retrieve_timeouts(&mut self) -> Vec<&mut AckResolver> {
         let mut resolvers = Vec::new();
         for list in self.resolvers.values_mut() {
             if let Some(resolver) = list.back_mut() {
                 if Instant::now() - resolver.last_update_time > self.timeouts[&resolver.addr] {
-                    // If the AckHandler has attempted to send a rel datagram
-                    // MAX_RETRIES times, drop the datagram
-                    if resolver.attempt_count >= MAX_RETRIES {
-                        continue;
-                    }
-
                     resolver.last_update_time = Instant::now();
-                    resolver.attempt_count += 1;
-
                     resolvers.push(resolver);
                 }
             }

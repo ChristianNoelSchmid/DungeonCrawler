@@ -1,8 +1,5 @@
-
-use rpg_server::{
-    datagrams::handler::DatagramHandler,
-    events::handler::EventHandler
-};
+use rpg_server::{datagrams::handler::DatagramHandler, events::handler::EventHandler};
+use std::collections::HashSet;
 
 fn main() -> Result<(), std::io::Error> {
     let dgm_h = DatagramHandler::new(2000)?;

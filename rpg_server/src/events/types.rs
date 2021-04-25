@@ -4,8 +4,8 @@ pub enum Type {
     Hello,
     Joined(u32),
     Welcome,
-    Left,
-    Drop
+    Left(u32),
+    Drop,
 }
 
 impl Type {
@@ -14,24 +14,30 @@ impl Type {
             Type::Hello => "Hello".to_string(),
             Type::Joined(id) => format!("Joined::{}", id),
             Type::Welcome => "Welcome".to_string(),
-            Type::Left => "Left".to_string(),
-            Type::Drop => "Drop".to_string()
+            Type::Left(id) => format!("Left::{}", id),
+            Type::Drop => "Drop".to_string(),
         }
     }
     pub fn from_str(from: &str) -> Type {
         let segs: Vec<&str> = from.split("::").collect();
-        
+
         match segs[0].trim() {
             "Hello" => Type::Hello,
             "Joined" => {
-                if let Ok(id) = u32::from_str(segs[1]) {
+                if let Ok(id) = u32::from_str(segs[1].trim()) {
                     Type::Joined(id)
                 } else {
                     Type::Drop
                 }
-            },
+            }
             "Welcome" => Type::Welcome,
-            "Left" => Type::Left,
+            "Left" => {
+                if let Ok(id) = u32::from_str(segs[1].trim()) {
+                    Type::Left(id)
+                } else {
+                    Type::Drop
+                }
+            }
             _ => Type::Drop,
         }
     }
