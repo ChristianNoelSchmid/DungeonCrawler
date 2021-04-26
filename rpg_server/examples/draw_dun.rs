@@ -1,6 +1,6 @@
 use rpg_server::dungeons::inst::Dungeon;
 
 fn main() {
-    let dun = Dungeon::new(30, 50);
+    let dun = Dungeon::new(20, 20);
     println!("{:?}", dun);
 }
