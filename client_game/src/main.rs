@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use client_game::{camera::CameraPlugin, controls::ControlsPlugin, player::PlayerPlugin, res::ResourcesPlugin, scale::ScalePlugin, walls::WallsPlugin};
+use client_game::{
+    camera::CameraPlugin, controls::ControlsPlugin, player::PlayerPlugin, res::ResourcesPlugin,
+    scale::ScalePlugin, walls::WallsPlugin,
+};
 
 fn main() {
     App::build()

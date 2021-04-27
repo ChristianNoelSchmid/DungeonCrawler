@@ -18,7 +18,7 @@ fn spawn_player(mut commands: Commands, materials: Res<Materials>) {
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.head_material.clone(),
-            sprite: Sprite::new(Vec2::new(20.0, 20.0)),
+            sprite: Sprite::new(Vec2::new(300.0, 300.0)),
             ..Default::default()
         })
         .insert(PlayerControls::new())

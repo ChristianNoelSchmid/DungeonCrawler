@@ -5,6 +5,7 @@ mod event_handler_tests {
 
     #[test]
     fn test_send_receive() {
+        todo!();
         let mut dgm_h1 = DatagramHandler::new(6000).unwrap();
         let (s, r) = dgm_h1.get_sender_receiver();
         let mut evn_h1 = EventHandler::new(r, s);

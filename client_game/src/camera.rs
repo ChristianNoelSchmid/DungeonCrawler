@@ -1,6 +1,12 @@
-use bevy::{prelude::*, render::camera::{ActiveCamera, ActiveCameras, Camera}};
+//! CameraPlugin - the movement controls for the camera
+//!
+//! Christian Schmid - April 2021
+
+use bevy::{prelude::*, render::camera::Camera};
 
 use crate::controls::PlayerControls;
+
+const CAM_SPEED: f32 = 2.0;
 
 pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
@@ -9,7 +15,17 @@ impl Plugin for CameraPlugin {
     }
 }
 
-fn move_camera(mut camera_transforms: Query<&mut Transform, With<ActiveCamera>>, mut player: Query<&Transform, With<PlayerControls>>) {
-    let mut transform = camera_transforms.single_mut().unwrap();
-    transform.translation = player.single_mut().unwrap().translation;
+fn move_camera(
+    time: Res<Time>,
+    mut tr_q: QuerySet<(
+        Query<&Transform, With<PlayerControls>>,
+        Query<&mut Transform, With<Camera>>,
+    )>,
+) {
+    let play_pos = tr_q.q0().iter().next().unwrap().translation;
+    let mut cam_transform = tr_q.q1_mut().single_mut().unwrap();
+
+    cam_transform.translation = cam_transform
+        .translation
+        .lerp(play_pos, time.delta().as_secs_f32() * CAM_SPEED);
 }

@@ -1,9 +1,10 @@
-use std::ops::{AddAssign};
+use std::ops::AddAssign;
 
 use bevy::prelude::*;
 
-pub const ARENA_WIDTH: u32 = 20;
-pub const ARENA_HEIGHT: u32 = 20;
+pub const SPRITE_SCALE: f32 = 2.0;
+pub const ARENA_WIDTH: u32 = 30;
+pub const ARENA_HEIGHT: u32 = 30;
 
 pub struct ResourcesPlugin;
 impl Plugin for ResourcesPlugin {
