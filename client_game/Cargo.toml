@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.5"
+rand  = '0.8.*'
+noise = '0.7.*'
+bevy_tilemap = "0.4"

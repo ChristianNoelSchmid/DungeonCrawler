@@ -1,0 +1,11 @@
+/home/christian/Documents/Portland State/Spring 2021/CS510 - Rust Programming/course_project/rpg_server/target/debug/deps/getrandom-9826a264a8a2ad3a.rmeta: /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/lib.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error_impls.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util_libc.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/use_file.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/linux_android.rs
+
+/home/christian/Documents/Portland State/Spring 2021/CS510 - Rust Programming/course_project/rpg_server/target/debug/deps/getrandom-9826a264a8a2ad3a.d: /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/lib.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error_impls.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util_libc.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/use_file.rs /home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/linux_android.rs
+
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/lib.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/error_impls.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/util_libc.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/use_file.rs:
+/home/christian/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.2/src/linux_android.rs:

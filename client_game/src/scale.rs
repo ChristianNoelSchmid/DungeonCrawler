@@ -1,6 +1,10 @@
-use bevy::{core::Time, math::{Vec2, Vec3}, prelude::{CoreStage, IntoSystem, Plugin, Query, Res, SystemSet, Transform}, sprite::Sprite, window::Windows};
+use bevy::{
+    core::Time,
+    math::Vec3,
+    prelude::{CoreStage, IntoSystem, Plugin, Query, Res, SystemSet, Transform},
+};
 
-use crate::res::{Position, Size, ARENA_HEIGHT, ARENA_WIDTH};
+use crate::res::{Position, Size, UNIT_SIZE};
 
 pub struct ScalePlugin;
 
@@ -19,28 +23,23 @@ impl Plugin for ScalePlugin {
     }
 }
 
-// Scales the game objects to their appropriate size
-fn size_scaling(windows: Res<Windows>, mut q: Query<(&Size, &mut Sprite)>) {
-    let window = windows.get_primary().unwrap();
-    for (sprite_size, mut sprite) in q.iter_mut() {
-        sprite.size = Vec2::new(
-            sprite_size.width / ARENA_WIDTH as f32 * window.height() as f32,
-            sprite_size.height / ARENA_HEIGHT as f32 * window.height() as f32,
+// Scales the game objects to the appropriate unit size (in res.rs)
+fn size_scaling(mut q: Query<(&Size, &mut Transform)>) {
+    for (size, mut transform) in q.iter_mut() {
+        transform.scale = Vec3::new(
+            size.width * UNIT_SIZE as f32,
+            size.height * UNIT_SIZE as f32,
+            1.0,
         );
     }
 }
 
-fn position_translation(time: Res<Time>, windows: Res<Windows>, mut q: Query<(&Position, &mut Transform)>) {
-    fn convert(pos: f32, bound_window: f32, bound_game: f32) -> f32 {
-        let tile_size = bound_window / bound_game;
-        pos / bound_game * bound_window - (bound_window / 2.) + (tile_size / 2.)
-    }
-    let window = windows.get_primary().unwrap();
+fn position_translation(time: Res<Time>, mut q: Query<(&Position, &mut Transform)>) {
     for (pos, mut transform) in q.iter_mut() {
-        transform.translation = transform.translation.lerp(Vec3::new(
-            convert(pos.x as f32, window.height() as f32, ARENA_WIDTH as f32),
-            convert(pos.y as f32, window.height() as f32, ARENA_HEIGHT as f32),
-            0.0),
-        time.delta().as_secs_f32() * TR_SPEED);
+        transform.translation = Vec3::new(
+            (pos.x * UNIT_SIZE as i32) as f32,
+            (pos.y * UNIT_SIZE as i32) as f32,
+            0.0,
+        );
     }
 }
