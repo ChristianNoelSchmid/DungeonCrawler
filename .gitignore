@@ -1,2 +1,2 @@
-rpg_server/target/
-client_game/target/
+*/target/
+*Cargo.lock
