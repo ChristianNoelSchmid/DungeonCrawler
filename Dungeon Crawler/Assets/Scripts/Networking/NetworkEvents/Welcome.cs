@@ -53,6 +53,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
             };
         }
 
-        public string CreateString() => $"Welcome::{Model.Serialize()}";
+        public string CreateString() => $"";
     }
 }

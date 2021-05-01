@@ -1,5 +1,5 @@
+use dungeon_crawler_server::events::handler::EventHandler;
 use udp_server::handler::DatagramHandler;
-use rpg_server::events::handler::EventHandler;
 
 fn main() -> Result<(), std::io::Error> {
     let dgm_h = DatagramHandler::new(2000)?;

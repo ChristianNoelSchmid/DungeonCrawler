@@ -41,7 +41,7 @@ namespace DungeonCrawler.Monobehaviours
         {
             if(!_initialized) return;
 
-            var position = light.Position.Position;
+            var position = light.Position.Value;
             var intensityDecrement = (1.0f / light.Range * light.Intensity);
             var updatedSquares = new HashSet<Vector2Int>();
 
@@ -51,7 +51,7 @@ namespace DungeonCrawler.Monobehaviours
                 float y = Mathf.Sin(f);
 
                 float sqIntensity = light.Intensity;
-                bool hitLight = false;
+                bool hitWall = false;
                 for(int i = 1; i <= light.Range + 1; ++i)
                 {
                     Vector2Int sqPosition = position + new Vector2Int(
@@ -59,43 +59,34 @@ namespace DungeonCrawler.Monobehaviours
                         (int)Mathf.Ceil(y * i)
                     );
 
+                    sqIntensity -= intensityDecrement;
                     if(_voxels.ContainsKey(sqPosition))
                     {
-                        if(_voxels[sqPosition].IsWall || hitLight)
+                        if(_voxels[sqPosition].IsWall || hitWall)
                         {
                             sqIntensity /= 3.0f; 
-                            hitLight = true;
+                            hitWall = true;
                         }
                     }
                     else
-                    {
-                        sqIntensity -= intensityDecrement;
                         continue;
-                    }
-
-                    if(updatedSquares.Contains(sqPosition))
-                    {
-                        sqIntensity = _lightUpdates[sqPosition];
+                    
+                    if (updatedSquares.Contains(sqPosition))
                         continue;
-                    }
-
-
-                    if(!_lightValues.ContainsKey(sqPosition))
-                        _lightValues.Add(sqPosition, new Dictionary<Light, float>());
-
-                    if(i > light.Range || sqIntensity < 0.0f)
+                    
+                    if(i > light.Range)
                         _lightValues[sqPosition][light] = 0.0f;
                     else 
+                    {
                         _lightValues[sqPosition][light] = sqIntensity;
+                        updatedSquares.Add(sqPosition);
+                    }
 
                     float max = 0.0f;
-                    if(_lightValues.ContainsKey(sqPosition))
+                    if(_lightValues.ContainsKey(sqPosition) && _lightValues[sqPosition].Count > 0)
                         max = _lightValues[sqPosition].Values.Max();
 
                     _lightUpdates[sqPosition] = max;
-                    updatedSquares.Add(sqPosition);
-
-                    sqIntensity -= intensityDecrement;
                 }
             }
         }
@@ -104,7 +95,6 @@ namespace DungeonCrawler.Monobehaviours
         {
             if(!_initialized) return;
 
-            Vector2Int position;
             var keys = _lightUpdates.Keys.ToArray();
             foreach(var pos in keys)
             {
@@ -138,6 +128,13 @@ namespace DungeonCrawler.Monobehaviours
             voxel.Renderer.color = newColor;
 
             voxel.LightUpdating = false;
+        }
+
+        public float SquareBrightness(Vector2Int pos)
+        {
+            if(_voxels != null && _voxels.ContainsKey(pos))
+                return _voxels[pos].Renderer.color.r;
+            return 0.0f;
         }
     }
 }

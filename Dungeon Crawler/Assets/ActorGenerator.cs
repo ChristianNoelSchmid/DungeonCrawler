@@ -13,23 +13,49 @@ namespace DungeonCrawler.Monobehaviours
         [SerializeField]
         private GameObject _playerTemplate;
 
-        private Dictionary<int, GridPosition> _playerPositions;
+        [SerializeField]
+        private GameObject[] _monsterTemplates;
+
+        private Dictionary<int, GridPosition> _actorPositions;
 
         private void Awake() =>
-            _playerPositions = new Dictionary<int, GridPosition>();
+            _actorPositions = new Dictionary<int, GridPosition>();
 
-        public void UpdatePlayerPosition(int id, Position position)
+        public void UpdatePosition(int id, PositionModel position)
         {
-            if(!_playerPositions.ContainsKey(id))
+            // Because the server may not have sent the client the new
+            // monster before sending a move update, it must be checked
+            if(_actorPositions.ContainsKey(id))
             {
-                _playerPositions.Add(
-                    id,
-                    Instantiate(_playerTemplate, new Vector3(position.X, position.Y), Quaternion.identity, null)
-                        .GetComponent<GridPosition>()
-                );
+                _actorPositions[id].FromPositionModel(position);
+                Obstacles.UpdateObstacle(_actorPositions[id].transform, _actorPositions[id].Value);   
             }
-            (_playerPositions[id].X, _playerPositions[id].Y) = (position.X, position.Y);
-            Obstacles.UpdateObstacle(_playerPositions[id].transform, new Vector2Int(position.X, position.Y));
+        }
+
+        public void SpawnPlayer(Player player)
+        {
+            (var id, var position) = (player.Id, player.Position);
+
+            _actorPositions.Add(
+                id,
+                Instantiate(_playerTemplate, new Vector3(position.X, position.Y), Quaternion.identity, null)
+                    .GetComponent<GridPosition>()
+            );
+
+            UpdatePosition(id, position);
+        }
+        public void SpawnMonster(MonsterInstance monster)
+        {
+            (var templateId, var instanceId, var position) = 
+                (monster.TemplateId, monster.InstanceId, monster.Position);
+
+            _actorPositions.Add(
+                instanceId,
+                Instantiate(_monsterTemplates[templateId], new Vector3(position.X, position.Y), Quaternion.identity, null)
+                    .GetComponent<GridPosition>()
+            );
+
+            UpdatePosition(instanceId, position);
         }
     }
 }

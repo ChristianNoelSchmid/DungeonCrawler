@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+
 using UnityEngine;
+
+using DungeonCrawler.Models;
 
 namespace DungeonCrawler.Monobehaviours
 {
@@ -46,7 +49,7 @@ namespace DungeonCrawler.Monobehaviours
                 else if(Input.GetKey(_timers[i].code)) 
                 {
                     _timers[i].timer += Time.deltaTime
-                        / (Input.GetKey(KeyCode.LeftShift) ? 2.0f : 1.0f);
+                        / (Input.GetKey(KeyCode.LeftShift) ? 4.0f : 1.0f);
                     if(_timers[i].timer >= (keysDown <= 1 ? 0.1f : 0.2f)) 
                     {
                         newPos += _timers[i].direction;
@@ -57,10 +60,11 @@ namespace DungeonCrawler.Monobehaviours
                     _timers[i].timer = 0.0f;
             }
 
-            if(Obstacles.UpdateObstacle(_transform, _gridPosition.Position + newPos))
+            if(Obstacles.UpdateObstacle(_transform, _gridPosition.Value + newPos))
             {
-                _gridPosition.X += newPos.x;
-                _gridPosition.Y += newPos.y;
+                _gridPosition.Value += newPos;
+                if(newPos.x > 0) _gridPosition.Direction = Direction.Right;
+                else if(newPos.x < 0) _gridPosition.Direction = Direction.Left;
             }
         }
     }

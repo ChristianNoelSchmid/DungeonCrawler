@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crossbeam::channel::{Receiver, RecvError, SendError, Sender};
+use crossbeam::channel::{Receiver, RecvError, SendError, Sender, TryRecvError};
 
 ///
 /// A wrapper for a channel Sender
@@ -32,11 +32,25 @@ impl PacketSender {
 pub struct ClientDroppedError;
 
 impl PacketReceiver {
+    ///
+    /// Creates a new PacketReceiver, with the specified
+    /// `crossbeam` `Receiver` `r_from_clients`
+    ///
     pub fn new(r_from_clients: Receiver<ReceivePacket>) -> Self {
         Self { r_from_clients }
     }
+    ///
+    /// Attempts to receive a package, blocking the
+    /// current thread until successful
+    ///
     pub fn recv(&self) -> Result<ReceivePacket, RecvError> {
         self.r_from_clients.recv()
+    }
+    ///
+    /// Attempts to receive a package without blocking.
+    ///
+    pub fn try_recv(&self) -> Result<ReceivePacket, TryRecvError> {
+        self.r_from_clients.try_recv()
     }
 }
 

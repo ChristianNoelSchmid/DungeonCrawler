@@ -81,10 +81,10 @@ namespace DungeonCrawler.Networking
                 _datagramHandler.SendDatagram(
                     new Moved
                     {
-                        Model = new DataModel<Position>
+                        Model = new DataModel<PositionModel>
                         {
                             Id = _playerId,
-                            Value = new Position { X = _playerPosition.X, Y = _playerPosition.Y }
+                            Value = _playerPosition.ToPositionModel()
                         }
                     }.CreateString(),
                     false
@@ -108,10 +108,12 @@ namespace DungeonCrawler.Networking
             {
                 return command switch
                 {
-                    "Welcome" => new Welcome(args),
-                    "PlayerLeft" => new PlayerLeft(args),
-                    "Moved" => new Moved(args),
-                    _ => null
+                    "Welcome"    =>     new Welcome(args),
+                    "NewPlayer"  =>     new NewPlayer(args),
+                    "NewMonster" =>     new NewMonster(args),
+                    "PlayerLeft" =>     new PlayerLeft(args),
+                    "Moved"      =>     new Moved(args),
+                    _            =>     null
                 };
             }
             catch(Exception) { return null; }
@@ -130,16 +132,25 @@ namespace DungeonCrawler.Networking
                                        // info and begin the Player position transfer
 
                     _dungeonGen.Dungeon = welcome.Model.Value;
-                    _playerPosition.X = _dungeonGen.Dungeon.Entrance.x;
-                    _playerPosition.Y = _dungeonGen.Dungeon.Entrance.y;
+                    _playerPosition.Value = _dungeonGen.Dungeon.Entrance;
                     _playerId = welcome.Model.Id;
 
                     StartCoroutine(BeginPinging());
                     break;
+                
+                case NewPlayer newPlayer:
+
+                    _actorGen.SpawnPlayer(newPlayer.Model);
+                    break;
+
+                case NewMonster newMonster:
+
+                    _actorGen.SpawnMonster(newMonster.Model);
+                    break;
 
                 case Moved moved:
 
-                    _actorGen.UpdatePlayerPosition(moved.Model.Id, moved.Model.Value);
+                    _actorGen.UpdatePosition(moved.Model.Id, moved.Model.Value);
                     break;
 
                 case PlayerLeft left: // On PlayerLeft, remove the Client's marker from the PlayerConnections

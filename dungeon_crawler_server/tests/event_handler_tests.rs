@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod event_handler_tests {
+    use dungeon_crawler_server::events::handler::EventHandler;
     use udp_server::handler::DatagramHandler;
-    use rpg_server::events::handler::EventHandler;
 
     #[test]
     fn test_send_receive() {

@@ -10,3 +10,5 @@ edition = "2018"
 simple_serializer = { path = '../crates/simple_serializer/' }
 dungeon_generator = { path = '../crates/dungeon_generator/' }
 udp_server = { path = '../crates/udp_server/' }
+rand  = '0.8.*'
+crossbeam = '0.8'

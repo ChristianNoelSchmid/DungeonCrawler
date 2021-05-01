@@ -212,6 +212,17 @@ impl DatagramHandler {
                     Type::Ack(ack_index) => {
                         ack_resolver.accept_ack(addr, ack_index);
                     }
+                    Type::Res => {
+                        let resolvers = ack_resolver.resend_to(addr);
+                        for res in resolvers {
+                            socket
+                                .send_to(
+                                    &Type::Rel(res.index, res.msg.to_string()).serialize(),
+                                    res.addr,
+                                )
+                                .unwrap();
+                        }
+                    }
                     _ => {}
                 }
             }

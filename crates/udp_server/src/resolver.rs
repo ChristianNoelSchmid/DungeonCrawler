@@ -45,6 +45,7 @@ impl AckHandler {
 
                     self.timeouts.insert(addr, timeout_secs);
                     pop_back = true;
+                    println!("accepted ack {}", index);
                 }
             }
             if pop_back {
@@ -147,6 +148,16 @@ impl AckHandler {
         self.resolvers.remove(&addr);
         self.next_from.remove(&addr);
         self.next_to.remove(&addr);
+    }
+
+    pub fn resend_to(&mut self, addr: SocketAddr) -> Vec<&AckResolver> {
+        let mut resolvers = Vec::new();
+        if let Some(list) = self.resolvers.get_mut(&addr) {
+            for resolver in list.iter().rev() {
+                resolvers.push(resolver);
+            }
+        }
+        resolvers
     }
 
     pub fn retrieve_timeouts(&mut self) -> Vec<&mut AckResolver> {

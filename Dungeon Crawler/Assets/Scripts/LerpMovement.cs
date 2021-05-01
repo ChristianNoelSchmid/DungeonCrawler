@@ -23,7 +23,7 @@ namespace DungeonCrawler.Monobehaviours
         void Update()
         {
             _transform.position = 
-                Vector2.Lerp(_transform.position, _gridPosition.Position, Time.deltaTime * _speed);
+                Vector2.Lerp(_transform.position, _gridPosition.Value, Time.deltaTime * _speed);
         }
     }
 }

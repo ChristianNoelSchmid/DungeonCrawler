@@ -186,6 +186,21 @@ namespace DungeonCrawler.Networking
             }
         }
 
+        public void SendAck(ulong index)
+        {
+            byte[] msgBytes;
+            msgBytes = Encoding.ASCII.GetBytes(Ack.CreateString(index));
+
+            try
+            {
+                _client.Send(msgBytes, msgBytes.Length);
+            }
+            catch (SocketException)
+            {
+                //_displayDisconnection.Display();
+            }
+        }
+
         /// <summary>
         /// Sends a datagram with the specified AckResolver info
         /// The datagram must be sent reliably, but the AckResolver
@@ -309,7 +324,7 @@ namespace DungeonCrawler.Networking
                         // Accept message, send ACK, and invoke MessageRecieved event
                         case Reliable rel:
                             _ackExpectedIndex += 1;
-                            SendDatagram(Ack.CreateString(rel.AckIndex), false);
+                            SendAck(rel.AckIndex);
                             MessageRecieved.Invoke(null, new DatagramCallback
                             {
                                 Data = rel.Data,

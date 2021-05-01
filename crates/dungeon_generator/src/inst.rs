@@ -53,6 +53,12 @@ impl Dungeon {
     pub fn paths(&self) -> hash_set::Iter<(u32, u32)> {
         self.paths.iter()
     }
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+    pub fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 impl Serialize for Dungeon {

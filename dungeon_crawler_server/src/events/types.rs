@@ -1,37 +1,44 @@
 use std::str::FromStr;
 
-use dungeon_generator::inst::Dungeon;
+use crate::state::{
+    monsters::MonsterInstance,
+    players::Player,
+    transform::{Direction, Transform},
+};
 use simple_serializer::{Deserialize, Serialize};
 
 #[derive(Debug)]
-pub enum Type<'a> {
+pub enum Type<'a, 'b> {
     Hello,
-    Joined(u32),
-    Welcome(u32, &'a Dungeon),
-    Moved(u32, (u32, u32)),
-    Left(u32),
+    Welcome(u32, String),            // id, dungeon paths
+    NewPlayer(&'a Player),           // id, (x, y)
+    NewMonster(&'b MonsterInstance), // template_id, instance_id, (x, y)
+    Moved(u32, Transform),           // id, transform
+    Left(u32),                       // id
     Dropped,
 }
 
-impl<'a> Serialize for Type<'a> {
+impl<'a, 'b> Serialize for Type<'a, 'b> {
     type SerializeTo = String;
     fn serialize(&self) -> String {
         match self {
             Type::Hello => "Hello".to_string(),
-            Type::Joined(id) => format!("Joined::{}", id),
-            Type::Welcome(id, dun) => format!("Welcome::{}::{}", id, dun.serialize()),
-            Type::Moved(id, (x, y)) => format!("Moved::{}::{}::{}", id, x, y),
+            Type::Welcome(id, dun) => format!("Welcome::{}::{}", id, dun),
+            Type::NewPlayer(player) => format!("NewPlayer::{}", player.serialize()),
+            Type::NewMonster(monster) => {
+                format!("NewMonster::{}", monster.serialize())
+            }
+            Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
             Type::Left(id) => format!("Left::{}", id),
             Type::Dropped => "Drop".to_string(),
         }
     }
 }
 
-impl<'a> Deserialize for Type<'a> {
+impl<'a, 'b> Deserialize for Type<'a, 'b> {
+    type DeserializeTo = Type<'a, 'b>;
 
-    type DeserializeTo = Type<'a>;
-
-    fn deserialize(from: &str) -> Type<'a> {
+    fn deserialize(from: &str) -> Self::DeserializeTo {
         let segs: Vec<&str> = from.split("::").collect();
 
         match segs[0].trim() {
@@ -44,14 +51,21 @@ impl<'a> Deserialize for Type<'a> {
                 }
             }
             "Moved" => {
-                if let Ok(id) = u32::from_str(segs[1].trim()) {
-                    if let Ok(x) = u32::from_str(segs[2]) {
-                        if let Ok(y) = u32::from_str(segs[3]) {
-                            return Type::Moved(id, (x, y));
-                        }
-                    }
+                match (
+                    u32::from_str(segs[1]),
+                    u32::from_str(segs[2]),
+                    u32::from_str(segs[3]),
+                    u32::from_str(segs[4]),
+                ) {
+                    (Ok(id), Ok(x), Ok(y), Ok(d)) => Type::Moved(
+                        id,
+                        Transform {
+                            position: (x, y),
+                            direction: Direction::from_u32(d),
+                        },
+                    ),
+                    _ => Type::Dropped,
                 }
-                Type::Dropped
             }
             _ => Type::Dropped,
         }

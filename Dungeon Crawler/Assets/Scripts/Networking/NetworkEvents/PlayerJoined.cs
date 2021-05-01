@@ -9,13 +9,13 @@ namespace DungeonCrawler.Networking.NetworkEvents
     /// </summary>
     public class PlayerJoined : NetworkEvent 
     { 
-        public Position Position { get; set; }
+        public PositionModel Position { get; set; }
 
         public PlayerJoined() => Position = null;
         public PlayerJoined(string value)
         {
             string [] args = value.Split(new string[] { "::" }, StringSplitOptions.None);
-            Position = new Position
+            Position = new PositionModel
             {
                 X = int.Parse(args[0]), 
                 Y = int.Parse(args[1])

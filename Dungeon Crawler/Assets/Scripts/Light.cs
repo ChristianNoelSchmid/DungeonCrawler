@@ -6,8 +6,7 @@ namespace DungeonCrawler.Monobehaviours
 {
     public class Light : MonoBehaviour
     {
-        [SerializeField]
-        private LightGenerator _generator;
+        private static LightGenerator _generator;
 
         [SerializeField]
         private int _range;
@@ -21,13 +20,18 @@ namespace DungeonCrawler.Monobehaviours
         public GridPosition Position => _position;
         private Vector2Int _previousPosition = new Vector2Int(-1, -1);
 
-        private void Awake() => _position = GetComponent<GridPosition>();
+        private void Awake()
+        {
+            if(_generator == null)
+                _generator = GameObject.FindObjectOfType<LightGenerator>();
+            _position = GetComponent<GridPosition>();
+        }
 
         private void Update()
         {
-            if(_previousPosition != _position.Position)
+            if(_previousPosition != _position.Value)
                 _generator.UpdateLight(this);
-            _previousPosition = _position.Position;
+            _previousPosition = _position.Value;
         }
     }
 }
