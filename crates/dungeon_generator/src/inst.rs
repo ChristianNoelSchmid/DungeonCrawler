@@ -9,10 +9,10 @@ pub struct Dungeon {
     width: u32,
     height: u32,
 
-    pub entrance: (u32, u32),
-    pub exit: (u32, u32),
+    pub entrance: (i32, i32),
+    pub exit: (i32, i32),
 
-    paths: HashSet<(u32, u32)>,
+    paths: HashSet<(i32, i32)>,
 }
 
 impl Dungeon {
@@ -28,16 +28,16 @@ impl Dungeon {
         // rand 0 to 1 for (x, y) position on entrance, multiplied by (width, height),
         // and calculate the opposite corner for exit
         let entrance = (
-            rng.next_u32() % width,
+            (rng.next_u32() % width) as i32,
             if rng.next_u32() % 2 == 0 {
                 0
             } else {
-                height - 1
+                (height - 1) as i32
             },
         );
         let exit = (
-            rng.next_u32() % width,
-            if entrance.1 == 0 { height - 1 } else { 0 },
+            (rng.next_u32() % width) as i32,
+            if entrance.1 == 0 { (height - 1) as i32 } else { 0 },
         );
 
         let paths = gen_paths(rng.gen::<f64>(), width, height, entrance, exit);
@@ -50,8 +50,11 @@ impl Dungeon {
             paths,
         }
     }
-    pub fn paths(&self) -> hash_set::Iter<(u32, u32)> {
+    pub fn paths(&self) -> hash_set::Iter<(i32, i32)> {
         self.paths.iter()
+    }
+    pub fn paths_ref(&self) -> &HashSet<(i32, i32)> {
+        &self.paths
     }
     pub fn width(&self) -> u32 {
         self.width
@@ -91,8 +94,8 @@ impl Debug for Dungeon {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Dungeon:\n{}", {
             let mut map = String::new();
-            for row in 0..self.height {
-                for col in 0..self.width {
+            for row in 0..self.height as i32 {
+                for col in 0..self.width as i32 {
                     map.push_str(if self.entrance == (col, row) {
                         "O "
                     } else if self.exit == (col, row) {

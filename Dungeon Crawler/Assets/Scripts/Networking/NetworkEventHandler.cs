@@ -30,6 +30,7 @@ namespace DungeonCrawler.Networking
 
         [SerializeField]
         private GridPosition _playerPosition;
+        private Vector2Int _prevPlayerPosition;
 
         private const float _playerUpdateIntevalSeconds = 0.1f;
 
@@ -66,6 +67,12 @@ namespace DungeonCrawler.Networking
         private void Update()
         {
             if(!_networkingEnabled) return;
+            var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            var mousePosInt = new Vector2Int(Mathf.RoundToInt(mousePos.x), Mathf.RoundToInt(mousePos.y));
+
+            if(Input.GetMouseButtonDown(0)) {
+                _datagramHandler.SendDatagram(new RequestMove { Model = mousePosInt }.CreateString(), false);
+            }
 
             // If there is an event in the queue, call it
             while(_callbackQueue.Count > 0)
@@ -78,17 +85,21 @@ namespace DungeonCrawler.Networking
         {
             while(true)
             {
-                _datagramHandler.SendDatagram(
-                    new Moved
-                    {
-                        Model = new DataModel<PositionModel>
+                if(_prevPlayerPosition != _playerPosition.Value)
+                {
+                    _datagramHandler.SendDatagram(
+                        new Moved
                         {
-                            Id = _playerId,
-                            Value = _playerPosition.ToPositionModel()
-                        }
-                    }.CreateString(),
-                    false
-                );
+                            Model = new DataModel<PositionModel>
+                            {
+                                Id = _playerId,
+                                Value = _playerPosition.ToPositionModel()
+                            }
+                        }.CreateString(),
+                        false
+                    );
+                    _prevPlayerPosition = _playerPosition.Value;
+                }
                 yield return _waitForInterval;
             }
         }

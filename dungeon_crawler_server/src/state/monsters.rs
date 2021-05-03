@@ -1,6 +1,6 @@
 use simple_serializer::Serialize;
 
-use super::transform::Transform;
+use super::transform::{Transform};
 
 ///
 /// Represents a particular monster type
@@ -17,11 +17,12 @@ pub struct Monster {
     pub damage: u32,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct MonsterInstance {
     pub template: &'static Monster,
     pub instance_id: u32,
     pub transform: Transform,
+    pub path: Vec<(i32, i32)>,
 }
 
 impl Serialize for MonsterInstance {

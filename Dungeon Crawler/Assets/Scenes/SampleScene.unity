@@ -820,8 +820,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c3d59b3a5e5ea856821b35ff8b7e1b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _range: 5
-  _intensity: 0.33
+  _range: 7
+  _intensity: 0.5
 --- !u!114 &2090128686
 MonoBehaviour:
   m_ObjectHideFlags: 0

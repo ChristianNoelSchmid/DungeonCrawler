@@ -24,9 +24,9 @@ pub fn gen_paths(
     seed: f64,
     width: u32,
     height: u32,
-    entrance: (u32, u32),
-    exit: (u32, u32),
-) -> HashSet<(u32, u32)> {
+    entrance: (i32, i32),
+    exit: (i32, i32),
+) -> HashSet<(i32, i32)> {
     // Convert the u32 values to i32s, to ensure that there
     // is no extra conversions, or overflow in the increment / decrementation
     let (width, height) = (width as i32, height as i32);
@@ -37,9 +37,6 @@ pub fn gen_paths(
     layer_path(&mut paths, seed, width, height);
 
     paths
-        .iter()
-        .map(|p| (p.0 as u32, p.1 as u32))
-        .collect::<HashSet<(u32, u32)>>()
 }
 
 /// Generate a path from the entrance to exit. This is NOT

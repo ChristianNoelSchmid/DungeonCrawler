@@ -14,7 +14,8 @@ pub enum Type<'a, 'b> {
     NewPlayer(&'a Player),           // id, (x, y)
     NewMonster(&'b MonsterInstance), // template_id, instance_id, (x, y)
     Moved(u32, Transform),           // id, transform
-    Left(u32),                       // id
+    RequestMove((i32, i32)),
+    Left(u32), // id
     Dropped,
 }
 
@@ -29,6 +30,7 @@ impl<'a, 'b> Serialize for Type<'a, 'b> {
                 format!("NewMonster::{}", monster.serialize())
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
+            Type::RequestMove((x, y)) => format!("RequestMove::{}::{}", x, y),
             Type::Left(id) => format!("Left::{}", id),
             Type::Dropped => "Drop".to_string(),
         }
@@ -53,20 +55,21 @@ impl<'a, 'b> Deserialize for Type<'a, 'b> {
             "Moved" => {
                 match (
                     u32::from_str(segs[1]),
-                    u32::from_str(segs[2]),
-                    u32::from_str(segs[3]),
+                    i32::from_str(segs[2]),
+                    i32::from_str(segs[3]),
                     u32::from_str(segs[4]),
                 ) {
                     (Ok(id), Ok(x), Ok(y), Ok(d)) => Type::Moved(
                         id,
-                        Transform {
-                            position: (x, y),
-                            direction: Direction::from_u32(d),
-                        },
+                        Transform::with_values((x, y), Direction::from_u32(d))
                     ),
                     _ => Type::Dropped,
                 }
             }
+            "RequestMove" => match (i32::from_str(segs[1].trim()), i32::from_str(segs[2].trim())) {
+                (Ok(x), Ok(y)) => Type::RequestMove((x, y)),
+                _ => Type::Dropped,
+            },
             _ => Type::Dropped,
         }
     }

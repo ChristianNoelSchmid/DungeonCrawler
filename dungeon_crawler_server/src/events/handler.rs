@@ -33,11 +33,11 @@ impl EventHandler {
     /// This enables concurrent communication with the DatagramHandler.
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
-        let dun = Dungeon::new(100, 100);
+        let dun = Dungeon::new(20, 20);
         let state = StateHandler::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
-        for i in 0..30 {
+        for i in 0..2 {
             s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
         }
 
@@ -47,7 +47,7 @@ impl EventHandler {
             s_to_state,
             r_from_state,
             addrs: HashMap::new(),
-            id_next: 30,
+            id_next: 10,
         };
 
         handler
@@ -131,6 +131,10 @@ impl EventHandler {
                     });
                 }
             }
+            Type::RequestMove(position) => {
+                println!("Moving Monster...");
+                self.s_to_state.send(RequestType::AStar(position)).unwrap();
+            }
             _ => {}
         };
         snd_packets
@@ -147,12 +151,12 @@ impl EventHandler {
                     })
                     .unwrap();
             }
-            ResponseType::MonsterMoved(monster) => {
+            ResponseType::MonsterMoved(id, transform) => {
                 self.s_to_clients
                     .send(SendPacket {
                         addrs: self.all_addrs(),
                         is_rel: false,
-                        msg: Type::Moved(monster.instance_id, monster.transform).serialize(),
+                        msg: Type::Moved(id, transform).serialize(),
                     })
                     .unwrap();
             }
@@ -195,7 +199,7 @@ impl EventHandler {
 
         // Create the new Player
         let new_player = Player {
-            id: self.id_next,
+            id: snapshot.player_id,
             name: "".to_string(),
             transform: Transform::with_values(snapshot.entrance, Direction::Left),
         };
@@ -221,7 +225,7 @@ impl EventHandler {
         snd_packets.push(SendPacket {
             addrs: vec![snapshot.addr_for],
             is_rel: true,
-            msg: Type::Welcome(self.id_next, snapshot.paths).serialize(),
+            msg: Type::Welcome(snapshot.player_id, snapshot.paths).serialize(),
         });
 
         snd_packets
