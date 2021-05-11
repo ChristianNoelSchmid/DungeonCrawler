@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, collections::HashMap, rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use crate::{
     astar::find_shortest_path,
@@ -7,6 +7,7 @@ use crate::{
             monsters::{Monster, MonsterInstance},
             players::Player,
         },
+        ai::ai_goblin::GOBLIN_IDLE,
         types::ResponseType,
     },
 };
@@ -14,14 +15,11 @@ use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
 
+use super::ai::ai_package_manager::IndependentManager;
 use super::{
-    ai::{
-        ai_package_manager::IndependentManager,
-        ai_packages::{AIPackageResult, IndependentPackage},
-    },
     snapshot::StateSnapshot,
     stats::{Attributes, Stats},
-    traits::{Combater, Directed, Positioned, Translater, AI},
+    traits::{Directed, Positioned, Translater, AI},
     transforms::{
         positioner::WorldTransformer,
         transform::{Direction, Transform},
@@ -108,7 +106,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
     let (s_from_state, r_from_state) = crossbeam::channel::unbounded();
 
-    std::thread::spawn(move || {
+    std::thread::spawn(move || -> ! {
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
         let mut players = HashMap::<u32, Player>::new();
         let mut transformer = Rc::new(WorldTransformer::new(
@@ -119,22 +117,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                 .map(|s| Vec2(s.0, s.1))
                 .collect(),
         ));
-        let mut ai_managers = HashMap::<u32, IndependentManager<&mut dyn AI>>::new();
-
-        let GOBLIN_IDLE: IndependentPackage<&mut dyn AI> = IndependentPackage {
-            req: |_| true,
-            on_start: |entity| {
-                if let Some(spot) = entity.spot_within(5) {
-                    entity.set_target(*spot);
-                }
-            },
-            step_next: |entity| {
-                entity.move_next();
-                AIPackageResult::Continue
-            },
-            interval: Duration::from_secs(10),
-            pick_count: 1,
-        };
+        let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
 
         loop {
             // RequestType Reception

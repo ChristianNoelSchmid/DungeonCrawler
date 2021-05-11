@@ -65,7 +65,7 @@ pub struct DependentPackage<ReqEntity, AIEntity> {
 ///         *and* the traits which implement the actions.
 ///
 #[derive(Clone, Copy)]
-pub struct IndependentPackage<Entity> {
+pub struct IndependentPackage<Entity: ?Sized> {
     ///
     /// Method which determines if the given
     /// `Req` traits' conditions are met

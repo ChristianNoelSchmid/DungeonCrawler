@@ -42,6 +42,7 @@ impl WorldTransformer {
     }
     pub fn from_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
         if let Some(t) = self.transforms.get_mut(&id) {
+            *t = new_t;
             return Some(*t);
         }
         None

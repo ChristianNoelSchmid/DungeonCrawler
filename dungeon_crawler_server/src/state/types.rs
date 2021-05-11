@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use crate::state::{actors::monsters::MonsterInstance, snapshot::StateSnapshot};
+use crate::state::{snapshot::StateSnapshot};
 
 use super::transforms::{
     transform::{Direction, Transform},
