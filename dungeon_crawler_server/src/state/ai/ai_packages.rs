@@ -5,12 +5,12 @@
 //! Christian Schmid - May, 2021
 //!
 
-use std::{time::Duration};
+use std::time::Duration;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum AIPackageResult {
     Continue,
-    Abort
+    Abort,
 }
 
 ///
@@ -62,7 +62,7 @@ pub struct DependentPackage<ReqEntity, AIEntity> {
 /// There is one generic associated with this struct:
 ///     
 /// `Entity` - the trait used to determine what requirements are
-///         *and* the traits which implement the actions. 
+///         *and* the traits which implement the actions.
 ///
 #[derive(Clone, Copy)]
 pub struct IndependentPackage<Entity> {

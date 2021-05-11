@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, time::Duration};
+use std::{borrow::Borrow, collections::HashMap, rc::Rc, time::Duration};
 
 use crate::{
     astar::find_shortest_path,
@@ -14,11 +14,21 @@ use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
 
-use super::{ai::{ai_goblin::GOBLIN_IDLE, ai_package_manager::IndependentManager}, snapshot::StateSnapshot, stats::{Attributes, Stats}, traits::{AI, Combater, Directed, Positioned, Translater}, transforms::{
+use super::{
+    ai::{
+        ai_package_manager::IndependentManager,
+        ai_packages::{AIPackageResult, IndependentPackage},
+    },
+    snapshot::StateSnapshot,
+    stats::{Attributes, Stats},
+    traits::{Combater, Directed, Positioned, Translater, AI},
+    transforms::{
         positioner::WorldTransformer,
         transform::{Direction, Transform},
         vec2::Vec2,
-    }, types::RequestType};
+    },
+    types::RequestType,
+};
 
 ///
 /// Template definitions for Monsters
@@ -111,6 +121,21 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
         ));
         let mut ai_managers = HashMap::<u32, IndependentManager<&mut dyn AI>>::new();
 
+        let GOBLIN_IDLE: IndependentPackage<&mut dyn AI> = IndependentPackage {
+            req: |_| true,
+            on_start: |entity| {
+                if let Some(spot) = entity.spot_within(5) {
+                    entity.set_target(*spot);
+                }
+            },
+            step_next: |entity| {
+                entity.move_next();
+                AIPackageResult::Continue
+            },
+            interval: Duration::from_secs(10),
+            pick_count: 1,
+        };
+
         loop {
             // RequestType Reception
             if let Ok(request) = r_at_state.try_recv() {
@@ -146,6 +171,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                     RequestType::PlayerMoved(id, new_t) => {
                         players.get_mut(&id).unwrap().change_trans(new_t);
                     }
+
                     RequestType::SpawnMonster(id) => {
                         let monster = spawn_monster(id, &mut transformer);
                         s_from_state
@@ -156,7 +182,10 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                                 monster.dir(),
                             ))
                             .unwrap();
-                        ai_managers.insert(monster.instance_id, IndependentManager::new(vec![&GOBLIN_IDLE]));
+                        ai_managers.insert(
+                            monster.instance_id,
+                            IndependentManager::new(vec![&GOBLIN_IDLE]),
+                        );
                         monsters.insert(monster.pos(), monster);
                     }
                     RequestType::AStar(position) => {
@@ -179,10 +208,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
     (s_to_state, r_from_state)
 }
 
-fn spawn_monster(
-    id: u32,
-    mut transformer: &mut Rc<WorldTransformer>,
-) -> MonsterInstance {
+fn spawn_monster(id: u32, mut transformer: &mut Rc<WorldTransformer>) -> MonsterInstance {
     let rand_count: u32 = MONSTERS.iter().map(|m| m.spawn_chance).sum();
     let mut choice = ((thread_rng().next_u32() % rand_count) + 1) as i32;
     let mut index = 0;

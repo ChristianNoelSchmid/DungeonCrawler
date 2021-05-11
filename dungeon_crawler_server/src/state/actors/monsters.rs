@@ -3,7 +3,15 @@ use std::rc::Rc;
 use simple_serializer::Serialize;
 use state::transforms::transform;
 
-use crate::{astar::find_shortest_path, state::{self, stats::{Attributes, Stats}, traits::{Combater, Directed, Positioned, TargetTranslator, Translater, AI}, transforms::{positioner::WorldTransformer, transform::Transform, vec2::Vec2}}};
+use crate::{
+    astar::find_shortest_path,
+    state::{
+        self,
+        stats::{Attributes, Stats},
+        traits::{Combater, Directed, Positioned, TargetTranslator, Translater, AI},
+        transforms::{positioner::WorldTransformer, transform::Transform, vec2::Vec2},
+    },
+};
 
 ///
 /// Represents a particular monster type
@@ -87,7 +95,7 @@ impl Translater for MonsterInstance {
     }
 }
 
-impl AI for MonsterInstance { }
+impl AI for MonsterInstance {}
 
 impl TargetTranslator for MonsterInstance {
     fn target(&self) -> Option<&Vec2> {
@@ -120,8 +128,7 @@ impl TargetTranslator for MonsterInstance {
 }
 
 impl Combater for MonsterInstance {
-    fn attk(&self) {
-    }
+    fn attk(&self) {}
 }
 
 impl Serialize for MonsterInstance {
