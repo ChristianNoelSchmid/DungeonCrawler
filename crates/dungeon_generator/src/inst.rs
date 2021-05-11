@@ -5,6 +5,8 @@ use rand::prelude::*;
 use simple_serializer::Serialize;
 
 use super::gen::gen_paths;
+
+#[derive(Clone)]
 pub struct Dungeon {
     width: u32,
     height: u32,

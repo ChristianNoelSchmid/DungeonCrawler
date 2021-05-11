@@ -1,44 +1,65 @@
-use std::{collections::{HashMap, HashSet}, time::{Duration, Instant}};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use crate::{
     astar::find_shortest_path,
     state::{
-        monsters::{Monster, MonsterInstance},
-        players::Player,
+        actors::{
+            monsters::{Monster, MonsterInstance},
+            players::Player,
+        },
         types::ResponseType,
     },
 };
 use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
-use simple_serializer::Serialize;
 
-use super::{
-    snapshot::StateSnapshot,
-    transform::{Direction, Transform},
-    types::RequestType,
-};
-
-const UPDATE_INCREMENT_MILLIS: u128 = 125;
+use super::{ai::{ai_goblin::GOBLIN_IDLE, ai_package_manager::IndependentManager}, snapshot::StateSnapshot, stats::{Attributes, Stats}, traits::{AI, Combater, Directed, Positioned, Translater}, transforms::{
+        positioner::WorldTransformer,
+        transform::{Direction, Transform},
+        vec2::Vec2,
+    }, types::RequestType};
 
 ///
 /// Template definitions for Monsters
 ///
-const MONSTERS: [Monster; 2] = [
+static MONSTERS: [Monster; 1] = [
     Monster {
-        template_id: 0,
+        stats: Stats {
+            cur_health: 20,
+            max_health: 20,
+            cur_stamina: 20,
+            max_stamina: 20,
+            cur_magicka: 0,
+            max_magicka: 0,
+        },
+        attrs: Attributes {
+            might: 2,
+            fines: 5,
+            intel: 1,
+        },
+        id: 0,
         name: "Goblin",
         spawn_chance: 10,
-        range: 1,
-        damage: 2,
     },
-    Monster {
+    /*Monster {
+        stats: Stats {
+            cur_health: 10,
+            max_health: 10,
+            cur_stamina: 5,
+            max_stamina: 5,
+            cur_magicka: 10,
+            max_magicka: 10,
+        },
+        attrs: Attributes {
+            might: 1,
+            fines: 3,
+            intel: 5,
+        },
         template_id: 1,
         name: "Ghost",
         spawn_chance: 3,
-        range: 5,
-        damage: 2,
-    },
+    },*/
 ];
 
 ///
@@ -77,102 +98,82 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
     let (s_from_state, r_from_state) = crossbeam::channel::unbounded();
 
-    let mut monsters = HashMap::<(i32, i32), MonsterInstance>::new();
-    let mut players = HashMap::<u32, Player>::new();
-    let mut filled_spots = HashSet::new();
+    std::thread::spawn(move || {
+        let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
+        let mut players = HashMap::<u32, Player>::new();
+        let mut transformer = Rc::new(WorldTransformer::new(
+            dungeon
+                .paths_ref()
+                .iter()
+                .cloned()
+                .map(|s| Vec2(s.0, s.1))
+                .collect(),
+        ));
+        let mut ai_managers = HashMap::<u32, IndependentManager<&mut dyn AI>>::new();
 
-    filled_spots.insert(dungeon.entrance);
-    filled_spots.insert(dungeon.exit);
-
-    for x in 0..dungeon.width() as i32 {
-        for y in 0..dungeon.height() as i32 {
-            filled_spots.insert((x, y));
-        }
-    }
-    for path in dungeon.paths() {
-        filled_spots.remove(path);
-    }
-
-    let mut update_instant = Instant::now();
-    std::thread::spawn(move || loop {
-        if let Ok(request) = r_at_state.try_recv() {
-            match request {
-                RequestType::NewPlayer(addr, id) => {
-                    players.insert(
-                        id,
-                        Player {
+        loop {
+            // RequestType Reception
+            if let Ok(request) = r_at_state.try_recv() {
+                match request {
+                    RequestType::NewPlayer(addr, id) => {
+                        players.insert(id, Player::new(id, "".to_string(), transformer.clone()));
+                        let transformer = Rc::get_mut(&mut transformer).unwrap();
+                        transformer.add(
                             id,
-                            name: "".to_string(),
-                            transform: Transform::with_values(dungeon.entrance, Direction::Left),
-                        },
-                    );
-                    s_from_state
-                        .send(ResponseType::StateSnapshot(StateSnapshot {
-                            player_id: id,
-                            addr_for: addr,
-                            players: players.values().cloned().collect(),
-                            monsters: monsters.values().cloned().collect(),
-                            paths: dungeon.serialize(),
-                            entrance: dungeon.entrance,
-                            exit: dungeon.exit,
-                        }))
-                        .unwrap();
-                }
-                RequestType::PlayerMoved(id, transform) => {
-                    if let Some(player) = players.get_mut(&id) {
-                        player.transform.from_other(&mut filled_spots, transform);
+                            Transform::with_values(
+                                Vec2::from_tuple(dungeon.entrance),
+                                Direction::Left,
+                            ),
+                        );
+                        s_from_state
+                            .send(ResponseType::StateSnapshot(StateSnapshot {
+                                addr_for: addr,
+                                new_player: (id, "".to_string(), players[&id].pos()),
+                                other_players: players
+                                    .values()
+                                    .cloned()
+                                    .map(|p| (p.id, p.name.clone(), p.pos()))
+                                    .collect(),
+                                monsters: monsters
+                                    .values()
+                                    .map(|m| (m.template.id, m.instance_id, m.pos()))
+                                    .collect(),
+                                dungeon: dungeon.clone(),
+                                all_player_ts: transformer.clone_transforms(),
+                            }))
+                            .unwrap();
+                    }
+                    RequestType::PlayerMoved(id, new_t) => {
+                        players.get_mut(&id).unwrap().change_trans(new_t);
+                    }
+                    RequestType::SpawnMonster(id) => {
+                        let monster = spawn_monster(id, &mut transformer);
+                        s_from_state
+                            .send(ResponseType::NewMonster(
+                                monster.template.id,
+                                monster.instance_id,
+                                monster.pos(),
+                                monster.dir(),
+                            ))
+                            .unwrap();
+                        ai_managers.insert(monster.instance_id, IndependentManager::new(vec![&GOBLIN_IDLE]));
+                        monsters.insert(monster.pos(), monster);
+                    }
+                    RequestType::AStar(position) => {
                         for monster in monsters.values_mut() {
-                            monster.path = find_shortest_path(
-                                dungeon.paths_ref(),
-                                &filled_spots,
-                                monster.transform.pos(),
-                                transform.pos(),
-                            );
+                            let monster_pos =
+                                transformer.transform(monster.instance_id).unwrap().position;
+                            monster.path = find_shortest_path(&transformer, monster_pos, position)
                         }
                     }
                 }
-                RequestType::SpawnMonster(id) => {
-                    let monster = spawn_monster(id, &dungeon, &mut monsters, &mut filled_spots);
-                    s_from_state
-                        .send(ResponseType::NewMonster(monster))
-                        .unwrap();
-                }
-                RequestType::AStar(position) => {
-                    for monster in monsters.values_mut() {
-                        monster.path = find_shortest_path(
-                            dungeon.paths_ref(),
-                            &filled_spots,
-                            monster.transform.pos(),
-                            position,
-                        )
-                    }
-                }
             }
-        }
-        if (Instant::now() - update_instant).as_millis() > UPDATE_INCREMENT_MILLIS {
             for monster in monsters.values_mut() {
-                if let Some(next) = monster.path.pop() {
-                    if !monster.transform.move_pos(&mut filled_spots, next) && monster.path.len() > 0 {
-                        monster.path = find_shortest_path(
-                            dungeon.paths_ref(),
-                            &filled_spots,
-                            monster.transform.pos(),
-                            monster.path[0],
-                        );
-                    } else {
-                        monster.transform.move_pos(&mut filled_spots, next);
-                    }
-                    s_from_state
-                        .send(ResponseType::MonsterMoved(
-                            monster.instance_id,
-                            monster.transform,
-                        ))
-                        .unwrap();
-                }
+                let index = monster.instance_id;
+                ai_managers.get_mut(&index).unwrap().run(monster);
             }
-            update_instant = Instant::now();
+            std::thread::sleep(Duration::from_millis(100));
         }
-        std::thread::sleep(Duration::from_millis(100));
     });
 
     (s_to_state, r_from_state)
@@ -180,9 +181,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
 
 fn spawn_monster(
     id: u32,
-    dungeon: &Dungeon,
-    monsters: &mut HashMap<(i32, i32), MonsterInstance>,
-    filled_spots: &mut HashSet<(i32, i32)>,
+    mut transformer: &mut Rc<WorldTransformer>,
 ) -> MonsterInstance {
     let rand_count: u32 = MONSTERS.iter().map(|m| m.spawn_chance).sum();
     let mut choice = ((thread_rng().next_u32() % rand_count) + 1) as i32;
@@ -197,47 +196,12 @@ fn spawn_monster(
         }
     }
 
-    let open_spot = open_spot(&dungeon, &filled_spots);
-    let instance = MonsterInstance {
-        template: &MONSTERS[index],
-        instance_id: id,
-        transform: Transform::with_values(open_spot, Direction::Right),
-        path: vec![open_spot],
-    };
-    monsters.insert(open_spot, instance.clone());
-    filled_spots.insert(open_spot);
-
-    instance
-}
-
-///
-/// Finds a currently open spot on the map,
-/// retrieving the current `dungeon`, and checking
-/// current `monsters` and `players` positions,
-/// filtering them out
-///
-fn open_spot<'a>(dungeon: &Dungeon, filled_spots: &'a HashSet<(i32, i32)>) -> (i32, i32) {
-    *dungeon
-        .paths()
-        .filter(|path| !filled_spots.contains(path))
-        .choose(&mut thread_rng())
+    let open_spot = transformer.open_spot();
+    Rc::get_mut(&mut transformer)
         .unwrap()
-}
+        .add(id, Transform::with_values(open_spot, Direction::Right))
+        .unwrap();
 
-///
-/// Finds a currently open spot on the map,
-/// retrieving the current `dungeon`, and checking
-/// current `monsters` and `players` positions,
-/// filtering them out
-///
-fn open_spot_by<'a>(
-    dungeon: &'a Dungeon,
-    filled_spots: &'a HashSet<(i32, i32)>,
-    spot: (i32, i32),
-) -> Option<&'a (i32, i32)> {
-    dungeon
-        .paths()
-        .filter(|path| Transform::distance(**path, spot) <= 1.0)
-        .filter(|path| !filled_spots.contains(path))
-        .choose(&mut thread_rng())
+    let instance = MonsterInstance::new(&MONSTERS[index], id, transformer.clone());
+    instance
 }

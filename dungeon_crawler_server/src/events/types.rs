@@ -1,44 +1,45 @@
 use std::str::FromStr;
 
-use crate::state::{
-    monsters::MonsterInstance,
-    players::Player,
+use crate::state::transforms::{
     transform::{Direction, Transform},
+    vec2::Vec2,
 };
 use simple_serializer::{Deserialize, Serialize};
 
 #[derive(Debug)]
-pub enum Type<'a, 'b> {
+pub enum Type {
     Hello,
-    Welcome(u32, String),            // id, dungeon paths
-    NewPlayer(&'a Player),           // id, (x, y)
-    NewMonster(&'b MonsterInstance), // template_id, instance_id, (x, y)
-    Moved(u32, Transform),           // id, transform
-    RequestMove((i32, i32)),
+    Welcome(u32, String),         // id, dungeon paths
+    NewPlayer(u32, String, Vec2), // id, (x, y)
+    NewMonster(u32, u32, Vec2),   // template_id, instance_id, pos
+    Moved(u32, Transform),        // id, transform
+    RequestMove(Vec2),
     Left(u32), // id
     Dropped,
 }
 
-impl<'a, 'b> Serialize for Type<'a, 'b> {
+impl Serialize for Type {
     type SerializeTo = String;
     fn serialize(&self) -> String {
         match self {
             Type::Hello => "Hello".to_string(),
             Type::Welcome(id, dun) => format!("Welcome::{}::{}", id, dun),
-            Type::NewPlayer(player) => format!("NewPlayer::{}", player.serialize()),
-            Type::NewMonster(monster) => {
-                format!("NewMonster::{}", monster.serialize())
+            Type::NewPlayer(id, name, pos) => {
+                format!("NewPlayer::{}::{}::{}", id, name, pos.serialize())
+            }
+            Type::NewMonster(t_id, i_id, pos) => {
+                format!("NewMonster::{}::{}::{}", t_id, i_id, pos.serialize())
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
-            Type::RequestMove((x, y)) => format!("RequestMove::{}::{}", x, y),
+            Type::RequestMove(Vec2(x, y)) => format!("RequestMove::{}::{}", x, y),
             Type::Left(id) => format!("Left::{}", id),
             Type::Dropped => "Drop".to_string(),
         }
     }
 }
 
-impl<'a, 'b> Deserialize for Type<'a, 'b> {
-    type DeserializeTo = Type<'a, 'b>;
+impl Deserialize for Type {
+    type DeserializeTo = Type;
 
     fn deserialize(from: &str) -> Self::DeserializeTo {
         let segs: Vec<&str> = from.split("::").collect();
@@ -61,13 +62,13 @@ impl<'a, 'b> Deserialize for Type<'a, 'b> {
                 ) {
                     (Ok(id), Ok(x), Ok(y), Ok(d)) => Type::Moved(
                         id,
-                        Transform::with_values((x, y), Direction::from_u32(d))
+                        Transform::with_values(Vec2(x, y), Direction::from_u32(d)),
                     ),
                     _ => Type::Dropped,
                 }
             }
             "RequestMove" => match (i32::from_str(segs[1].trim()), i32::from_str(segs[2].trim())) {
-                (Ok(x), Ok(y)) => Type::RequestMove((x, y)),
+                (Ok(x), Ok(y)) => Type::RequestMove(Vec2(x, y)),
                 _ => Type::Dropped,
             },
             _ => Type::Dropped,

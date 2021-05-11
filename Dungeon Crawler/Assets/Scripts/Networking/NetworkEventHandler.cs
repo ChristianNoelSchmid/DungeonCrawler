@@ -160,8 +160,10 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case Moved moved:
-
-                    _actorGen.UpdatePosition(moved.Model.Id, moved.Model.Value);
+                    if(moved.Model.Id == _playerId)
+                        _playerPosition.FromPositionModel(moved.Model.Value);
+                    else
+                        _actorGen.UpdatePosition(moved.Model.Id, moved.Model.Value);
                     break;
 
                 case PlayerLeft left: // On PlayerLeft, remove the Client's marker from the PlayerConnections

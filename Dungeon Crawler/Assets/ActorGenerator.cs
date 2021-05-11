@@ -34,28 +34,28 @@ namespace DungeonCrawler.Monobehaviours
 
         public void SpawnPlayer(Player player)
         {
-            (var id, var position) = (player.Id, player.Position);
-
+            GridPosition playerPos;
             _actorPositions.Add(
-                id,
-                Instantiate(_playerTemplate, new Vector3(position.X, position.Y), Quaternion.identity, null)
+                player.Id,
+                playerPos = Instantiate(_playerTemplate, new Vector3(-1000, 0), Quaternion.identity, null)
                     .GetComponent<GridPosition>()
             );
 
-            UpdatePosition(id, position);
+            UpdatePosition(player.Id, playerPos.ToPositionModel());
         }
         public void SpawnMonster(MonsterInstance monster)
         {
-            (var templateId, var instanceId, var position) = 
-                (monster.TemplateId, monster.InstanceId, monster.Position);
+            (var templateId, var instanceId) = 
+                (monster.TemplateId, monster.InstanceId);
 
+            GridPosition monsterPosition;
             _actorPositions.Add(
                 instanceId,
-                Instantiate(_monsterTemplates[templateId], new Vector3(position.X, position.Y), Quaternion.identity, null)
+                monsterPosition = Instantiate(_monsterTemplates[templateId], new Vector3(-1000, 0), Quaternion.identity, null)
                     .GetComponent<GridPosition>()
             );
 
-            UpdatePosition(instanceId, position);
+            UpdatePosition(instanceId, monsterPosition.ToPositionModel());
         }
     }
 }

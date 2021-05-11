@@ -2,11 +2,11 @@
 //!
 //! Christian Schmid, May 2021
 
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 
-use crate::state::transform::Transform;
+use crate::state::transforms::{positioner::WorldTransformer, vec2::Vec2};
 
-const POS_TO_CONSIDER: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
 
 ///
 /// A wrapper around (u32, u32), with cost
@@ -14,7 +14,7 @@ const POS_TO_CONSIDER: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 ///
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 struct Path {
-    pos: (i32, i32),
+    pos: Vec2,
     cost: u32,
 }
 
@@ -40,21 +40,16 @@ impl PartialOrd for Path {
 /// Requires a collection of `paths`, and a collection
 /// of the currently `filled_spots` on the `paths`.
 ///
-pub fn find_shortest_path(
-    paths: &HashSet<(i32, i32)>,
-    filled_spots: &HashSet<(i32, i32)>,
-    start: (i32, i32),
-    end: (i32, i32),
-) -> Vec<(i32, i32)> {
-    if !paths.contains(&start) || !paths.contains(&end) {
+pub fn find_shortest_path(transformer: &WorldTransformer, start: Vec2, end: Vec2) -> Vec<Vec2> {
+    if !transformer.is_on_paths(start) || !transformer.is_on_paths(end) {
         return vec![start];
     }
 
     // The true distances from start point to path key
-    let mut dist_map = HashMap::<(i32, i32), u32>::new();
+    let mut dist_map = HashMap::<Vec2, u32>::new();
     // A map of connecting previous positions, for rebuilding
     // the shortest path afterwards
-    let mut prev_pos = HashMap::<(i32, i32), (i32, i32)>::new();
+    let mut prev_pos = HashMap::<Vec2, Vec2>::new();
     let mut last_pos_cons = start;
 
     // A binary heap (priority queue)
@@ -70,7 +65,7 @@ pub fn find_shortest_path(
 
     // While there are still paths to be considered
     while let Some(u) = queue.pop() {
-        // Set last considered position 
+        // Set last considered position
         // to u position
         last_pos_cons = u.pos;
 
@@ -80,8 +75,10 @@ pub fn find_shortest_path(
         }
 
         for path in POS_TO_CONSIDER.iter() {
-            let new_pos = Transform::add_pos(u.pos, *path);
-            if paths.contains(&new_pos) && (!filled_spots.contains(&new_pos) || new_pos == end) {
+            let new_pos = u.pos + *path;
+            if transformer.is_spot_open(new_pos)
+                || (transformer.is_on_paths(new_pos) && new_pos == end)
+            {
                 let new_cost = dist_map[&u.pos] + 1;
 
                 if let Some(cost) = dist_map.get(&new_pos) {
@@ -92,13 +89,13 @@ pub fn find_shortest_path(
 
                 dist_map.insert(new_pos, new_cost);
                 prev_pos.insert(new_pos, u.pos);
-                
+
                 // Compute the A* heuristic, and apply to heap.
                 // Multiply by 1000 to maintain decimal difference between
                 // two similar f32s converted to u32s
                 queue.push(Path {
                     pos: new_pos,
-                    cost: (new_cost as f32 + (Transform::distance(new_pos, end)) * 1000.0) as u32,
+                    cost: (new_cost as f32 + (Vec2::distance(new_pos, end)) * 1000.0) as u32,
                 });
             }
         }
@@ -106,7 +103,14 @@ pub fn find_shortest_path(
 
     let mut shortest_path = Vec::new();
     if last_pos_cons != end {
-        last_pos_cons = *dist_map.keys().min_by(|p, p2| Transform::distance(**p, end).partial_cmp(&Transform::distance(**p2, end)).unwrap()).unwrap();
+        last_pos_cons = *dist_map
+            .keys()
+            .min_by(|p, p2| {
+                Vec2::distance(**p, end)
+                    .partial_cmp(&Vec2::distance(**p2, end))
+                    .unwrap()
+            })
+            .unwrap();
     }
 
     while last_pos_cons != start {

@@ -1,16 +1,21 @@
 use std::net::SocketAddr;
 
-use super::{monsters::MonsterInstance, snapshot::StateSnapshot, transform::Transform};
+use crate::state::{actors::monsters::MonsterInstance, snapshot::StateSnapshot};
+
+use super::transforms::{
+    transform::{Direction, Transform},
+    vec2::Vec2,
+};
 
 pub enum RequestType {
     NewPlayer(SocketAddr, u32),
     PlayerMoved(u32, Transform),
     SpawnMonster(u32),
-    AStar((i32, i32)),
+    AStar(Vec2),
 }
 
 pub enum ResponseType {
     StateSnapshot(StateSnapshot),
-    NewMonster(MonsterInstance),
+    NewMonster(u32, u32, Vec2, Direction),
     MonsterMoved(u32, Transform),
 }

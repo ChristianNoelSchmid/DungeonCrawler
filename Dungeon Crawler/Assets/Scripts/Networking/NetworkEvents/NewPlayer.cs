@@ -19,12 +19,7 @@ namespace DungeonCrawler.Networking.NetworkEvents
             Model = new Player
             {
                 Id = int.Parse(args[0]),
-                Position = new PositionModel
-                {
-                    X = int.Parse(args[1]), 
-                    Y = int.Parse(args[2]),
-                    Direction = ((Direction)int.Parse(args[3])),
-                }
+                Name = args[1].Trim(),
             };
         }
         public string CreateString() => $"";

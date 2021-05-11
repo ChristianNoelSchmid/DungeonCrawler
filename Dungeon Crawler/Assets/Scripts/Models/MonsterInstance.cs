@@ -8,7 +8,6 @@ namespace DungeonCrawler.Models
     {
         public int TemplateId { get; set; }
         public int InstanceId { get; set; }
-        public PositionModel Position { get; set; }
 
         // The client never sends a Player datagram, so
         // Serialize is simply implemented

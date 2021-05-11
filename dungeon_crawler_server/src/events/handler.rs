@@ -8,10 +8,11 @@ use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacke
 use crate::{
     events::types::Type,
     state::{
+        actors::players::Player,
         handler::StateHandler,
-        players::Player,
         snapshot::StateSnapshot,
-        transform::{Direction, Transform},
+        stats::{Attributes, Stats},
+        traits::Positioned,
         types::{RequestType, ResponseType},
     },
 };
@@ -142,12 +143,12 @@ impl EventHandler {
 
     fn parse_state_response(&mut self, response: ResponseType) {
         match response {
-            ResponseType::NewMonster(monster) => {
+            ResponseType::NewMonster(t_id, i_id, pos, dir) => {
                 self.s_to_clients
                     .send(SendPacket {
                         addrs: self.all_addrs(),
                         is_rel: true,
-                        msg: Type::NewMonster(&monster).serialize(),
+                        msg: Type::NewMonster(t_id, i_id, pos).serialize(),
                     })
                     .unwrap();
             }
@@ -197,19 +198,28 @@ impl EventHandler {
     fn prepare_welcome_packet(&mut self, snapshot: StateSnapshot) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
 
-        // Create the new Player
-        let new_player = Player {
-            id: snapshot.player_id,
-            name: "".to_string(),
-            transform: Transform::with_values(snapshot.entrance, Direction::Left),
-        };
-
         // Send all MonsterInstance information to the client
         for monster in snapshot.monsters {
             snd_packets.push(SendPacket {
                 addrs: vec![snapshot.addr_for],
                 is_rel: true,
-                msg: Type::NewMonster(&monster).serialize(),
+                msg: Type::NewMonster(monster.0, monster.1, monster.2).serialize(),
+            });
+        }
+
+        for player in snapshot.other_players {
+            snd_packets.push(SendPacket {
+                addrs: vec![snapshot.addr_for],
+                is_rel: true,
+                msg: Type::NewPlayer(player.0, player.1, player.2).serialize(),
+            });
+        }
+
+        for player_ts in snapshot.all_player_ts {
+            snd_packets.push(SendPacket {
+                addrs: vec![snapshot.addr_for],
+                is_rel: true,
+                msg: Type::Moved(player_ts.0, player_ts.1).serialize(),
             });
         }
 
@@ -218,14 +228,19 @@ impl EventHandler {
         snd_packets.push(SendPacket {
             addrs: self.all_addrs_but(snapshot.addr_for),
             is_rel: true,
-            msg: Type::NewPlayer(&new_player).serialize(),
+            msg: Type::NewPlayer(
+                snapshot.new_player.0,
+                snapshot.new_player.1,
+                snapshot.new_player.2,
+            )
+            .serialize(),
         });
         // Send the Welcome packet to the incoming client,
         // which contains the dungeon information
         snd_packets.push(SendPacket {
             addrs: vec![snapshot.addr_for],
             is_rel: true,
-            msg: Type::Welcome(snapshot.player_id, snapshot.paths).serialize(),
+            msg: Type::Welcome(snapshot.new_player.0, snapshot.dungeon.serialize()).serialize(),
         });
 
         snd_packets

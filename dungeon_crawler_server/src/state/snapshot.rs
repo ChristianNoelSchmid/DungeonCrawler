@@ -1,14 +1,14 @@
-use simple_serializer::Serialize;
+use dungeon_generator::inst::Dungeon;
 
-use super::{monsters::MonsterInstance, players::Player};
 use std::net::SocketAddr;
+
+use super::transforms::{transform::Transform, vec2::Vec2};
 
 pub struct StateSnapshot {
     pub addr_for: SocketAddr,
-    pub player_id: u32,
-    pub players: Vec<Player>,
-    pub monsters: Vec<MonsterInstance>,
-    pub paths: String,
-    pub entrance: (i32, i32),
-    pub exit: (i32, i32),
+    pub new_player: (u32, String, Vec2),
+    pub other_players: Vec<(u32, String, Vec2)>,
+    pub all_player_ts: Vec<(u32, Transform)>,
+    pub monsters: Vec<(u32, u32, Vec2)>,
+    pub dungeon: Dungeon,
 }

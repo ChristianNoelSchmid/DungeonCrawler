@@ -7,7 +7,7 @@ namespace DungeonCrawler.Models
     public class Player : ISerializable
     {
         public int Id { get; set; }
-        public PositionModel Position { get; set; }
+        public string Name { get; set; }
 
         // The client never sends a Player datagram, so
         // Serialize is simply implemented
