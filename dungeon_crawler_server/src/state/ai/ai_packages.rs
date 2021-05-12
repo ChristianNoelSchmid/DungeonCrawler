@@ -7,6 +7,10 @@
 
 use std::time::Duration;
 
+use crossbeam::channel::Sender;
+
+use crate::state::{transforms::world_transformer::WorldTransformer, types::ResponseType};
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum AIPackageResult {
     Continue,
@@ -41,7 +45,7 @@ pub struct DependentPackage<ReqEntity, AIEntity> {
     ///
     /// An increment in the `Entity`'s AI system
     ///
-    pub step_next: fn(entity: &mut AIEntity) -> AIPackageResult,
+    pub step_next: fn(entity: &mut AIEntity, s_to_event: &Sender<ResponseType>) -> AIPackageResult,
     ///
     /// The amount of time the `AIPackage` will run
     /// on the given Entity, assuming that `req` is
@@ -70,16 +74,20 @@ pub struct IndependentPackage<Entity: ?Sized> {
     /// Method which determines if the given
     /// `Req` traits' conditions are met
     ///
-    pub req: fn(entity: &Entity) -> bool,
+    pub req: fn(&mut WorldTransformer, entity: &Entity) -> bool,
     ///
     /// Method that runs upon the `AIPackage`
     /// starting. Initial actions of the `Entity`.
     ///
-    pub on_start: fn(entity: &mut Entity),
+    pub on_start: fn(&mut WorldTransformer, entity: &mut Entity),
     ///
     /// An increment in the `Entity`'s AI system
     ///
-    pub step_next: fn(entity: &mut Entity) -> AIPackageResult,
+    pub step_next: fn(
+        &mut WorldTransformer,
+        entity: &mut Entity,
+        s_to_event: &Sender<ResponseType>,
+    ) -> AIPackageResult,
     ///
     /// The amount of time the `AIPackage` will run
     /// on the given Entity, assuming that `req` is

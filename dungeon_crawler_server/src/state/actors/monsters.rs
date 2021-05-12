@@ -1,16 +1,9 @@
-use std::rc::Rc;
-
 use simple_serializer::Serialize;
-use state::transforms::transform;
 
-use crate::{
-    astar::find_shortest_path,
-    state::{
-        self,
-        stats::{Attributes, Stats},
-        traits::{Combater, Directed, Positioned, TargetTranslator, Translater, AI},
-        transforms::{positioner::WorldTransformer, transform::Transform, vec2::Vec2},
-    },
+use crate::state::{
+    stats::{Attributes, Stats},
+    traits::{Combater, Identified, Translator, AI},
+    transforms::vec2::Vec2,
 };
 
 ///
@@ -32,98 +25,39 @@ pub struct Monster {
 pub struct MonsterInstance {
     pub template: &'static Monster,
     pub instance_id: u32,
-
-    transformer: Rc<WorldTransformer>,
-
     pub stats: Stats,
     pub path: Vec<Vec2>,
 }
 
 impl MonsterInstance {
-    pub fn new(
-        template: &'static Monster,
-        instance_id: u32,
-        transformer: Rc<WorldTransformer>,
-    ) -> Self {
+    pub fn new(template: &'static Monster, instance_id: u32) -> Self {
         Self {
             template,
             instance_id,
-
-            transformer,
             stats: template.stats.clone(),
             path: Vec::new(),
         }
     }
-    fn transform(&self) -> &Transform {
-        self.transformer.transform(self.instance_id).unwrap()
-    }
-    fn transformer(&mut self) -> &mut WorldTransformer {
-        Rc::get_mut(&mut self.transformer).unwrap()
-    }
 }
 
-impl Positioned for MonsterInstance {
-    fn pos(&self) -> Vec2 {
-        self.transform().position
-    }
-}
-
-impl Directed for MonsterInstance {
-    fn dir(&self) -> transform::Direction {
-        self.transform().direction
-    }
-
-    fn face_dir(&mut self, dir: transform::Direction) {
-        let id = self.instance_id;
-        self.transformer().change_dir(id, dir);
-    }
-}
-
-impl Translater for MonsterInstance {
-    fn move_pos(&mut self, new_pos: Vec2) -> bool {
-        let id = self.instance_id;
-        self.transformer().move_pos(id, new_pos)
-    }
-
-    fn change_trans(&mut self, new_t: Transform) -> bool {
-        let id = self.instance_id;
-        self.transformer().from_transform(id, new_t).is_some()
-    }
-
-    fn spot_within(&self, range: u32) -> Option<&Vec2> {
-        self.transformer.open_spot_within(self.pos(), range)
+impl Identified for MonsterInstance {
+    fn id(&self) -> u32 {
+        self.instance_id
     }
 }
 
 impl AI for MonsterInstance {}
 
-impl TargetTranslator for MonsterInstance {
+impl Translator for MonsterInstance {
     fn target(&self) -> Option<&Vec2> {
         self.path.first()
     }
-
-    fn next_to_target(&self) -> bool {
-        return if let Some(target) = self.target() {
-            Vec2::distance(self.pos(), *target) <= 1.0
-        } else {
-            false
-        };
+    fn set_path(&mut self, path: Vec<Vec2>) {
+        self.path = path;
     }
 
-    fn move_next(&mut self) {
-        if let Some(point) = self.path.pop() {
-            if !self.move_pos(point) {
-                self.path = find_shortest_path(
-                    &self.transformer,
-                    self.pos(),
-                    *self.path.first().unwrap_or(&point),
-                )
-            }
-        }
-    }
-
-    fn set_target(&mut self, target: Vec2) {
-        self.path = find_shortest_path(&self.transformer, self.pos(), target);
+    fn next_step(&mut self) -> Option<Vec2> {
+        self.path.pop()
     }
 }
 
@@ -139,11 +73,6 @@ impl Serialize for MonsterInstance {
         // will have the rest of the information to
         // generate the `MonsterInstance` from it's
         // associated template id.
-        format!(
-            "{}::{}::{}",
-            self.template.id,
-            self.instance_id,
-            self.transform().serialize()
-        )
+        format!("{}::{}", self.template.id, self.instance_id,)
     }
 }

@@ -4,7 +4,7 @@
 
 use std::collections::{BinaryHeap, HashMap};
 
-use crate::state::transforms::{positioner::WorldTransformer, vec2::Vec2};
+use crate::state::transforms::{vec2::Vec2, world_transformer::WorldTransformer};
 
 const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
 

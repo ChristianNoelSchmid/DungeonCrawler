@@ -17,9 +17,9 @@ pub mod state {
     }
 
     pub mod transforms {
-        pub mod positioner;
         pub mod transform;
         pub mod vec2;
+        pub mod world_transformer;
     }
 
     pub mod actors {

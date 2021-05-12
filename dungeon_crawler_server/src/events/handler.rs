@@ -8,11 +8,8 @@ use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacke
 use crate::{
     events::types::Type,
     state::{
-        actors::players::Player,
         handler::StateHandler,
         snapshot::StateSnapshot,
-        stats::{Attributes, Stats},
-        traits::Positioned,
         types::{RequestType, ResponseType},
     },
 };
@@ -143,7 +140,7 @@ impl EventHandler {
 
     fn parse_state_response(&mut self, response: ResponseType) {
         match response {
-            ResponseType::NewMonster(t_id, i_id, pos, dir) => {
+            ResponseType::NewMonster(t_id, i_id, pos, _dir) => {
                 self.s_to_clients
                     .send(SendPacket {
                         addrs: self.all_addrs(),

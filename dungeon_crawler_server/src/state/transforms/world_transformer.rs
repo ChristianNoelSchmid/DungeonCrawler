@@ -7,7 +7,7 @@ use super::{
     vec2::Vec2,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 
 pub struct WorldTransformer {
     transforms: HashMap<u32, Transform>,
@@ -46,6 +46,20 @@ impl WorldTransformer {
             return Some(*t);
         }
         None
+    }
+    pub fn pos(&self, id: u32) -> Option<Vec2> {
+        return if let Some(t) = self.transforms.get(&id) {
+            Some(t.position)
+        } else {
+            None
+        };
+    }
+    pub fn dir(&self, id: u32) -> Option<Direction> {
+        return if let Some(t) = self.transforms.get(&id) {
+            Some(t.direction)
+        } else {
+            None
+        };
     }
     pub fn move_pos(&mut self, id: u32, new_pos: Vec2) -> bool {
         if let Some(t) = self.transforms.get_mut(&id) {
@@ -104,11 +118,20 @@ impl WorldTransformer {
     /// current `monsters` and `players` positions,
     /// filtering them out
     ///
-    pub fn open_spot_within(&self, spot: Vec2, range: u32) -> Option<&Vec2> {
-        self.paths
-            .iter()
-            .filter(|path| Vec2::distance(**path, spot) <= range as f32)
-            .filter(|path| !self.filled_spots.contains(path))
-            .choose(&mut thread_rng())
+    pub fn open_spot_within(&self, id: u32, range: u32) -> Option<Vec2> {
+        if let Some(transform) = self.transforms.get(&id) {
+            if let Some(spot) = self
+                .paths
+                .iter()
+                .filter(|path| {
+                    Vec2::distance(**path, transform.position) <= range as f32
+                        && !self.filled_spots.contains(path)
+                })
+                .choose(&mut thread_rng())
+            {
+                return Some(*spot);
+            }
+        }
+        None
     }
 }
