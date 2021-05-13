@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use super::transforms::vec2::Vec2;
 
 pub trait Identified {
@@ -18,7 +20,11 @@ pub trait Translator: Identified {
 pub trait Combater {
     fn start_combat_with(&mut self, id: u32);
     fn in_combat_with(&self) -> Option<u32>;
+    fn stop_combat(&mut self);
     fn sight_range(&self) -> u32;
+
+    fn last_sighting(&self) -> Instant;
+    fn set_last_sighting(&mut self, last: Instant);
 }
 
 pub trait AI: Translator + Combater {}

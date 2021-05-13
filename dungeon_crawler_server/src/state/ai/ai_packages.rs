@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use crossbeam::channel::Sender;
 
-use crate::state::{transforms::world_transformer::WorldTransformer, types::ResponseType};
+use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum AIPackageResult {
@@ -74,17 +74,17 @@ pub struct IndependentPackage<Entity: ?Sized> {
     /// Method which determines if the given
     /// `Req` traits' conditions are met
     ///
-    pub req: fn(&mut WorldTransformer, entity: &Entity) -> bool,
+    pub req: fn(&mut WorldStage, entity: &Entity) -> bool,
     ///
     /// Method that runs upon the `AIPackage`
     /// starting. Initial actions of the `Entity`.
     ///
-    pub on_start: fn(&mut WorldTransformer, entity: &mut Entity),
+    pub on_start: fn(&mut WorldStage, entity: &mut Entity),
     ///
     /// An increment in the `Entity`'s AI system
     ///
     pub step_next: fn(
-        &mut WorldTransformer,
+        &mut WorldStage,
         entity: &mut Entity,
         s_to_event: &Sender<ResponseType>,
     ) -> AIPackageResult,
@@ -93,7 +93,7 @@ pub struct IndependentPackage<Entity: ?Sized> {
     /// on the given Entity, assuming that `req` is
     /// continually met.
     ///
-    pub interval: Duration,
+    pub intv_range: (Duration, Duration),
     ///
     /// The chance of the AIPackage being chosen among
     /// several when the `AIManager` chooses.

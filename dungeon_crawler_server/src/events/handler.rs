@@ -31,11 +31,11 @@ impl EventHandler {
     /// This enables concurrent communication with the DatagramHandler.
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
-        let dun = Dungeon::new(20, 20);
+        let dun = Dungeon::new(100, 100);
         let state = StateHandler::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
-        for i in 0..2 {
+        for i in 0..10 {
             s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
         }
 

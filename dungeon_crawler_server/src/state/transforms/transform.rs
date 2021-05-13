@@ -25,21 +25,21 @@ impl Direction {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Transform {
-    pub position: Vec2,
-    pub direction: Direction,
+    pub pos: Vec2,
+    pub dir: Direction,
 }
 
 impl Transform {
     pub fn new() -> Self {
         Self {
-            position: Vec2(0, 0),
-            direction: Direction::Right,
+            pos: Vec2(0, 0),
+            dir: Direction::Right,
         }
     }
     pub fn with_values(position: Vec2, direction: Direction) -> Self {
         Self {
-            position,
-            direction,
+            pos: position,
+            dir: direction,
         }
     }
 }
@@ -47,9 +47,6 @@ impl Transform {
 impl Serialize for Transform {
     type SerializeTo = String;
     fn serialize(&self) -> Self::SerializeTo {
-        format!(
-            "{}::{}::{}",
-            self.position.0, self.position.1, self.direction
-        )
+        format!("{}::{}::{}", self.pos.0, self.pos.1, self.dir)
     }
 }

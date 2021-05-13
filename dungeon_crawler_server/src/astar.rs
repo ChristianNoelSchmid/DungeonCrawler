@@ -3,12 +3,17 @@
 //! Christian Schmid, May 2021
 
 use std::{
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     f32::consts::PI,
 };
 
-use crate::state::transforms::{
-    transform::Direction, vec2::Vec2, world_transformer::WorldTransformer,
+use crate::state::{
+    actor::ActorId,
+    transforms::{
+        transform::{Direction, Transform},
+        vec2::Vec2,
+        world_stage::WorldStage,
+    },
 };
 
 const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
@@ -45,7 +50,7 @@ impl PartialOrd for Path {
 /// Requires a collection of `paths`, and a collection
 /// of the currently `filled_spots` on the `paths`.
 ///
-pub fn find_shortest_path(transformer: &WorldTransformer, start: Vec2, end: Vec2) -> Vec<Vec2> {
+pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> Vec<Vec2> {
     if !transformer.is_on_paths(start) || !transformer.is_on_paths(end) {
         return vec![start];
     }
@@ -126,29 +131,35 @@ pub fn find_shortest_path(transformer: &WorldTransformer, start: Vec2, end: Vec2
     shortest_path
 }
 
-fn test_visible_players(
-    transformer: &mut WorldTransformer,
-    pos: Vec2,
-    dir: Direction,
+pub fn test_visible_actors(
+    world_stage: &mut WorldStage,
+    tr: Transform,
+    actor_id: ActorId,
     sight_range: u32,
-) -> Vec<u32> {
-    let mut ids = Vec::new();
+) -> HashSet<u32> {
+    let mut ids = HashSet::new();
 
-    let (begin, end) = if dir == Direction::Left {
-        (PI / 2.0, 3.0 * (PI / 2.0))
+    let (begin, end) = if tr.dir == Direction::Left {
+        (PI / 2.0, (3.0 * PI) / 2.0)
     } else {
         (-PI / 2.0, PI / 2.0)
     };
 
     let mut f = begin;
-    while f < end {
-        for i in 1..sight_range {
-            let spot = Vec2((f.cos() * i as f32) as i32, (f.sin() * i as f32) as i32);
-            if !transformer.is_spot_open(spot) {
-                if transformer.pla
+    let mut i;
+    while f <= end {
+        i = 1.0;
+        while i < sight_range as f32 {
+            let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);
+            if let Some(actor) = world_stage.is_actor_id_on_spot(actor_id, spot) {
+                ids.insert(actor.id);
+                break;
+            } else if !world_stage.is_spot_open(spot) {
+                break;
             }
+            i += 1.0;
         }
-        f += PI / 10.0;
+        f += PI / (8.0 * sight_range as f32);
     }
 
     ids

@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use rand::{prelude::IteratorRandom, thread_rng};
 
+use crate::state::actor::{Actor, ActorId};
+
 use super::{
     transform::{Direction, Transform},
     vec2::Vec2,
@@ -9,71 +11,76 @@ use super::{
 
 #[derive(Clone, Debug)]
 
-pub struct WorldTransformer {
-    transforms: HashMap<u32, Transform>,
+pub struct WorldStage {
+    actors: HashMap<u32, Actor>,
     paths: HashSet<Vec2>,
     filled_spots: HashSet<Vec2>,
 }
 
-impl WorldTransformer {
+impl WorldStage {
     pub fn new(paths: HashSet<Vec2>) -> Self {
         Self {
-            transforms: HashMap::new(),
+            actors: HashMap::new(),
             paths: paths,
             filled_spots: HashSet::new(),
         }
     }
-    pub fn transform<'a>(&'a self, id: u32) -> Option<&'a Transform> {
-        self.transforms.get(&id)
+    pub fn actor<'a>(&'a self, id: u32) -> Option<&'a Actor> {
+        self.actors.get(&id)
     }
     pub fn clone_transforms<'a>(&'a self) -> Vec<(u32, Transform)> {
-        self.transforms.clone().into_iter().collect()
+        self.actors
+            .clone()
+            .into_iter()
+            .map(|a| (a.0, a.1.tr))
+            .collect()
     }
-    pub fn add(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
-        if !self.transforms.contains_key(&id) {
-            self.transforms.insert(id, new_t);
+    pub fn add(&mut self, id: u32, actor: Actor) -> Option<&Actor> {
+        if !self.actors.contains_key(&id) {
+            self.actors.insert(id, actor);
 
-            return Some(new_t);
+            return Some(&self.actors[&id]);
         }
         None
     }
     pub fn remove(&mut self, id: u32) -> bool {
-        self.transforms.remove(&id).is_some()
+        self.actors.remove(&id).is_some()
     }
     pub fn from_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
-        if let Some(t) = self.transforms.get_mut(&id) {
-            *t = new_t;
-            return Some(*t);
+        self.move_pos(id, new_t.pos);
+        if let Some(a) = self.actors.get_mut(&id) {
+            a.tr.dir = new_t.dir;
+            return Some(a.tr);
         }
         None
     }
     pub fn pos(&self, id: u32) -> Option<Vec2> {
-        return if let Some(t) = self.transforms.get(&id) {
-            Some(t.position)
+        return if let Some(a) = self.actors.get(&id) {
+            Some(a.tr.pos)
         } else {
             None
         };
     }
     pub fn dir(&self, id: u32) -> Option<Direction> {
-        return if let Some(t) = self.transforms.get(&id) {
-            Some(t.direction)
+        return if let Some(a) = self.actors.get(&id) {
+            Some(a.tr.dir)
         } else {
             None
         };
     }
     pub fn move_pos(&mut self, id: u32, new_pos: Vec2) -> bool {
-        if let Some(t) = self.transforms.get_mut(&id) {
+        if let Some(a) = self.actors.get_mut(&id) {
             if !self.filled_spots.contains(&new_pos) && self.paths.contains(&new_pos) {
-                self.filled_spots.remove(&t.position);
+                self.filled_spots.remove(&a.tr.pos);
                 self.filled_spots.insert(new_pos);
 
-                if new_pos.0 > t.position.0 {
-                    t.direction = Direction::Right;
-                } else if new_pos.1 < t.position.1 {
-                    t.direction = Direction::Left;
+                if new_pos.0 > a.tr.pos.0 {
+                    a.tr.dir = Direction::Right;
+                } else if new_pos.0 < a.tr.pos.0 {
+                    a.tr.dir = Direction::Left;
                 }
 
-                t.position = new_pos;
+                a.tr.pos = new_pos;
 
                 return true;
             }
@@ -82,9 +89,9 @@ impl WorldTransformer {
         false
     }
     pub fn change_dir(&mut self, id: u32, new_dir: Direction) -> Option<Transform> {
-        if let Some(t) = self.transforms.get_mut(&id) {
-            t.direction = new_dir;
-            return Some(*t);
+        if let Some(a) = self.actors.get_mut(&id) {
+            a.tr.dir = new_dir;
+            return Some(a.tr);
         }
         None
     }
@@ -93,12 +100,19 @@ impl WorldTransformer {
         self.paths.contains(&spot) && !self.filled_spots.contains(&spot)
     }
 
-    pub fn player_on_path(&self, spot: Vec2) -> Option<u32> {
-        self.paths.contains
+    pub fn is_actor_id_on_spot(&self, actor_id: ActorId, spot: Vec2) -> Option<&Actor> {
+        self.actors
+            .values()
+            .filter(|a| a.actor_id == actor_id && a.tr.pos == spot)
+            .next()
     }
 
     pub fn is_on_paths(&self, spot: Vec2) -> bool {
         self.paths.contains(&spot)
+    }
+
+    pub fn is_actor_on_spot(&self, id: u32, spot: Vec2) -> bool {
+        self.actors[&id].tr.pos == spot
     }
 
     ///
@@ -123,12 +137,12 @@ impl WorldTransformer {
     /// filtering them out
     ///
     pub fn open_spot_within(&self, id: u32, range: u32) -> Option<Vec2> {
-        if let Some(transform) = self.transforms.get(&id) {
+        if let Some(a) = self.actors.get(&id) {
             if let Some(spot) = self
                 .paths
                 .iter()
                 .filter(|path| {
-                    Vec2::distance(**path, transform.position) <= range as f32
+                    Vec2::distance(**path, a.tr.pos) <= range as f32
                         && !self.filled_spots.contains(path)
                 })
                 .choose(&mut thread_rng())

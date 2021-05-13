@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use simple_serializer::Serialize;
 
 use crate::state::{
@@ -29,7 +31,9 @@ pub struct MonsterInstance {
     pub instance_id: u32,
     pub stats: Stats,
     pub path: Vec<Vec2>,
+
     pub in_combat_with: Option<u32>,
+    pub last_sighting: Instant,
 }
 
 impl MonsterInstance {
@@ -40,6 +44,7 @@ impl MonsterInstance {
             stats: template.stats.clone(),
             path: Vec::new(),
             in_combat_with: None,
+            last_sighting: Instant::now(),
         }
     }
 }
@@ -59,7 +64,6 @@ impl Translator for MonsterInstance {
     fn set_path(&mut self, path: Vec<Vec2>) {
         self.path = path;
     }
-
     fn next_step(&mut self) -> Option<Vec2> {
         self.path.pop()
     }
@@ -72,8 +76,17 @@ impl Combater for MonsterInstance {
     fn in_combat_with(&self) -> Option<u32> {
         self.in_combat_with
     }
+    fn stop_combat(&mut self) {
+        self.in_combat_with = None;
+    }
     fn sight_range(&self) -> u32 {
         self.template.sight_range
+    }
+    fn last_sighting(&self) -> Instant {
+        self.last_sighting
+    }
+    fn set_last_sighting(&mut self, last: Instant) {
+        self.last_sighting = last;
     }
 }
 

@@ -1,27 +1,25 @@
 use std::{collections::HashMap, time::Duration};
 
 use crate::state::{
-    actors::{
-        monsters::{Monster, MonsterInstance},
-        players::Player,
-    },
-    ai::ai_goblin::GOBLIN_IDLE,
+    ai::ai_goblin::{GOBLIN_IDLE, MELEE_COMBAT},
     types::ResponseType,
 };
 use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
 
-use super::{ai::ai_package_manager::IndependentManager, traits::Identified};
+use super::{
+    actor::{Actor, ActorId},
+    ai::ai_package_manager::IndependentManager,
+    monsters::{Monster, MonsterInstance},
+    players::Player,
+    traits::Identified,
+};
 use super::{
     snapshot::StateSnapshot,
     stats::{Attributes, Stats},
     traits::AI,
-    transforms::{
-        transform::{Direction, Transform},
-        vec2::Vec2,
-        world_transformer::WorldTransformer,
-    },
+    transforms::{transform::Direction, vec2::Vec2, world_stage::WorldStage},
     types::RequestType,
 };
 
@@ -46,6 +44,7 @@ static MONSTERS: [Monster; 1] = [
         id: 0,
         name: "Goblin",
         spawn_chance: 10,
+        sight_range: 4,
     },
     /*Monster {
         stats: Stats {
@@ -106,7 +105,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
     std::thread::spawn(move || -> ! {
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
         let mut players = HashMap::<u32, Player>::new();
-        let mut transformer = WorldTransformer::new(
+        let mut world_stage = WorldStage::new(
             dungeon
                 .paths_ref()
                 .iter()
@@ -122,31 +121,33 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                 match request {
                     RequestType::NewPlayer(addr, id) => {
                         players.insert(id, Player::new(id, "".to_string()));
-                        transformer.add(
+                        world_stage.add(
                             id,
-                            Transform::with_values(
+                            Actor::new(
+                                id,
                                 Vec2::from_tuple(dungeon.entrance),
                                 Direction::Left,
+                                ActorId::Player,
                             ),
                         );
                         s_from_state
                             .send(ResponseType::StateSnapshot(StateSnapshot {
                                 addr_for: addr,
-                                new_player: (id, "".to_string(), transformer.pos(id).unwrap()),
+                                new_player: (id, "".to_string(), world_stage.pos(id).unwrap()),
                                 other_players: players
                                     .values()
                                     .filter(|p| p.id != id)
                                     .cloned()
-                                    .map(|p| (p.id, p.name.clone(), transformer.pos(p.id).unwrap()))
+                                    .map(|p| (p.id, p.name.clone(), world_stage.pos(p.id).unwrap()))
                                     .collect(),
                                 monsters: monsters
                                     .values()
                                     .map(|m| {
-                                        (m.template.id, m.id(), transformer.pos(m.id()).unwrap())
+                                        (m.template.id, m.id(), world_stage.pos(m.id()).unwrap())
                                     })
                                     .collect(),
                                 dungeon: dungeon.clone(),
-                                all_player_ts: transformer.clone_transforms(),
+                                all_player_ts: world_stage.clone_transforms(),
                             }))
                             .unwrap();
                     }
@@ -154,24 +155,24 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                         players.remove(&id);
                     }
                     RequestType::PlayerMoved(id, new_t) => {
-                        transformer.from_transform(id, new_t);
+                        world_stage.from_transform(id, new_t);
                     }
 
                     RequestType::SpawnMonster(id) => {
-                        let monster = spawn_monster(id, &mut transformer);
+                        let monster = spawn_monster(id, &mut world_stage);
                         s_from_state
                             .send(ResponseType::NewMonster(
                                 monster.template.id,
                                 monster.instance_id,
-                                transformer.pos(monster.id()).unwrap(),
-                                transformer.dir(monster.id()).unwrap(),
+                                world_stage.pos(monster.id()).unwrap(),
+                                world_stage.dir(monster.id()).unwrap(),
                             ))
                             .unwrap();
                         ai_managers.insert(
                             monster.instance_id,
-                            IndependentManager::new(vec![&GOBLIN_IDLE]),
+                            IndependentManager::new(vec![&GOBLIN_IDLE, &MELEE_COMBAT]),
                         );
-                        monsters.insert(transformer.pos(monster.id()).unwrap(), monster);
+                        monsters.insert(world_stage.pos(monster.id()).unwrap(), monster);
                     }
                     _ => {}
                 }
@@ -181,7 +182,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                 ai_managers
                     .get_mut(&index)
                     .unwrap()
-                    .run(&mut transformer, monster, &s_from_state);
+                    .run(&mut world_stage, monster, &s_from_state);
             }
             std::thread::sleep(Duration::from_millis(200));
         }
@@ -190,7 +191,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
     (s_to_state, r_from_state)
 }
 
-fn spawn_monster(id: u32, transformer: &mut WorldTransformer) -> MonsterInstance {
+fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
     let rand_count: u32 = MONSTERS.iter().map(|m| m.spawn_chance).sum();
     let mut choice = ((thread_rng().next_u32() % rand_count) + 1) as i32;
     let mut index = 0;
@@ -205,7 +206,10 @@ fn spawn_monster(id: u32, transformer: &mut WorldTransformer) -> MonsterInstance
 
     let open_spot = transformer.open_spot();
     transformer
-        .add(id, Transform::with_values(open_spot, Direction::Right))
+        .add(
+            id,
+            Actor::new(id, open_spot, Direction::Right, ActorId::Monster),
+        )
         .unwrap();
 
     let instance = MonsterInstance::new(&MONSTERS[index], id);

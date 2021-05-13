@@ -4,7 +4,10 @@ pub mod events {
 }
 
 pub mod state {
+    pub mod actor;
     pub mod handler;
+    pub mod monsters;
+    pub mod players;
     pub mod snapshot;
     pub mod stats;
     pub mod traits;
@@ -19,12 +22,7 @@ pub mod state {
     pub mod transforms {
         pub mod transform;
         pub mod vec2;
-        pub mod world_transformer;
-    }
-
-    pub mod actors {
-        pub mod monsters;
-        pub mod players;
+        pub mod world_stage;
     }
 }
 

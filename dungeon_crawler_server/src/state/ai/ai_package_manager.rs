@@ -1,9 +1,9 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crossbeam::channel::Sender;
 use rand::{thread_rng, RngCore};
 
-use crate::state::{transforms::world_transformer::WorldTransformer, types::ResponseType};
+use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
 
 use super::ai_packages::{AIPackageResult, DependentPackage, IndependentPackage};
 
@@ -23,7 +23,7 @@ impl<'a, ReqEntity, AIEntity> DependentManager<'a, ReqEntity, AIEntity> {
     }
     pub fn run(
         &mut self,
-        transformer: &mut WorldTransformer,
+        transformer: &mut WorldStage,
         req_ent: &ReqEntity,
         ai_ent: &mut AIEntity,
         s_to_event: &Sender<ResponseType>,
@@ -66,6 +66,7 @@ impl<'a, ReqEntity, AIEntity> DependentManager<'a, ReqEntity, AIEntity> {
 pub struct IndependentManager<'a, Entity: ?Sized> {
     packages: Vec<&'a IndependentPackage<Entity>>,
     selected: Option<usize>,
+    chosen_dur: Duration,
     start_time: Instant,
 }
 
@@ -75,17 +76,18 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
             packages: ai_packages,
             selected: None,
             start_time: Instant::now(),
+            chosen_dur: Duration::from_secs(0),
         }
     }
     pub fn run(
         &mut self,
-        transformer: &mut WorldTransformer,
+        transformer: &mut WorldStage,
         entity: &mut Entity,
         s_to_event: &Sender<ResponseType>,
     ) {
         let mut choose_new = false;
         if let Some(selected) = self.selected {
-            if Instant::now() - self.start_time < self.packages[selected].interval {
+            if Instant::now() - self.start_time < self.chosen_dur {
                 if (self.packages[selected].step_next)(transformer, entity, s_to_event)
                     == AIPackageResult::Abort
                 {
@@ -113,9 +115,16 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
                 if (package.req)(transformer, entity) {
                     count -= package.pick_count as i32;
                     if count <= 0 {
+                        let sel_pkg = self.packages[index as usize];
                         self.selected = Some(index as usize);
-                        (self.packages[index as usize].on_start)(transformer, entity);
+                        (sel_pkg.on_start)(transformer, entity);
                         self.start_time = Instant::now();
+
+                        let rnd_dur = thread_rng().next_u64()
+                            % (sel_pkg.intv_range.1 - sel_pkg.intv_range.0).as_secs()
+                            + sel_pkg.intv_range.0.as_secs();
+                        self.chosen_dur = Duration::from_secs(rnd_dur);
+
                         break;
                     }
                 }
