@@ -83,6 +83,7 @@ namespace DungeonCrawler.Networking
         // with the local Player's GridPosition
         private IEnumerator BeginPinging()
         {
+            var count = 0;
             while(true)
             {
                 if(_prevPlayerPosition != _playerPosition.Value)
@@ -99,6 +100,14 @@ namespace DungeonCrawler.Networking
                         false
                     );
                     _prevPlayerPosition = _playerPosition.Value;
+                }
+                ++count;
+                if (count % 10 == 0)
+                {
+                    _datagramHandler.SendDatagram(
+                        Datagrams.Ping.CreateString(),
+                        false
+                    );
                 }
                 yield return _waitForInterval;
             }
@@ -167,7 +176,7 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case PlayerLeft left: // On PlayerLeft, remove the Client's marker from the PlayerConnections
-
+                    _actorGen.RemoveById(left.Model.Id); 
                     break;
             }
         }

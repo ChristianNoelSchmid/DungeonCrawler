@@ -93,6 +93,10 @@ impl WorldTransformer {
         self.paths.contains(&spot) && !self.filled_spots.contains(&spot)
     }
 
+    pub fn player_on_path(&self, spot: Vec2) -> Option<u32> {
+        self.paths.contains
+    }
+
     pub fn is_on_paths(&self, spot: Vec2) -> bool {
         self.paths.contains(&spot)
     }

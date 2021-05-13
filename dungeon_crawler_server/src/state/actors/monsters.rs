@@ -16,6 +16,8 @@ use crate::state::{
 pub struct Monster {
     pub stats: Stats,
     pub attrs: Attributes,
+    pub sight_range: u32,
+
     pub id: u32,
     pub name: &'static str,
     pub spawn_chance: u32,
@@ -27,6 +29,7 @@ pub struct MonsterInstance {
     pub instance_id: u32,
     pub stats: Stats,
     pub path: Vec<Vec2>,
+    pub in_combat_with: Option<u32>,
 }
 
 impl MonsterInstance {
@@ -36,6 +39,7 @@ impl MonsterInstance {
             instance_id,
             stats: template.stats.clone(),
             path: Vec::new(),
+            in_combat_with: None,
         }
     }
 }
@@ -62,7 +66,15 @@ impl Translator for MonsterInstance {
 }
 
 impl Combater for MonsterInstance {
-    fn attk(&self) {}
+    fn start_combat_with(&mut self, id: u32) {
+        self.in_combat_with = Some(id)
+    }
+    fn in_combat_with(&self) -> Option<u32> {
+        self.in_combat_with
+    }
+    fn sight_range(&self) -> u32 {
+        self.template.sight_range
+    }
 }
 
 impl Serialize for MonsterInstance {

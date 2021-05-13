@@ -7,21 +7,21 @@ use simple_serializer::{Deserialize, Serialize};
 ///
 #[derive(Debug)]
 pub enum Type {
-    // unreliable datagram (does not need ack)
+    /// unreliable datagram (does not need ack)
     Unrel(String),
-    // reliable datagram (requires sending an ack)
+    /// reliable datagram (requires sending an ack)
     Rel(u64, String),
-    // ack datagram (acknowledges a rel datagram has been recieved)
-    // with it's associated index
+    /// ack datagram (acknowledges a rel datagram has been recieved)
+    /// with it's associated index
     Ack(u64),
-    // resend datagram (the recipient needs all rel datagrams resent)
+    /// resend datagram (the recipient needs all rel datagrams resent)
     Res,
-    // a datagram representing to the server that a client is still connected
-    // If enough time passes where the client doesn't send this, or any other,
-    // datagram, the server will drop it.
+    /// a datagram representing to the server that a client is still connected
+    /// If enough time passes where the client doesn't send this, or any other,
+    /// datagram, the server will drop it.
     Ping,
-    // a datagram that had some kind of parsing error, or the server informing a
-    // client that it has been dropped
+    /// a datagram that had some kind of parsing error, or the server informing a
+    /// client that it has been dropped
     Drop,
 }
 

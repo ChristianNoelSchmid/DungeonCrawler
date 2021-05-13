@@ -113,7 +113,6 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
                 if (package.req)(transformer, entity) {
                     count -= package.pick_count as i32;
                     if count <= 0 {
-                        println!("Chose a new AIPackage");
                         self.selected = Some(index as usize);
                         (self.packages[index as usize].on_start)(transformer, entity);
                         self.start_time = Instant::now();

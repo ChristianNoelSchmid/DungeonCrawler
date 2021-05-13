@@ -92,8 +92,10 @@ impl EventHandler {
             snd_packets.push(SendPacket {
                 addrs: self.all_addrs(),
                 is_rel: true,
-                msg: Type::Left(id).serialize(),
+                msg: Type::PlayerLeft(id).serialize(),
             });
+
+            self.s_to_state.send(RequestType::DropPlayer(id)).unwrap();
         }
         snd_packets
     }
@@ -130,7 +132,6 @@ impl EventHandler {
                 }
             }
             Type::RequestMove(position) => {
-                println!("Moving Monster...");
                 self.s_to_state.send(RequestType::AStar(position)).unwrap();
             }
             _ => {}

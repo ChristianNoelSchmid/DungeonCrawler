@@ -9,6 +9,7 @@ use super::transforms::{
 
 pub enum RequestType {
     NewPlayer(SocketAddr, u32),
+    DropPlayer(u32),
     PlayerMoved(u32, Transform),
     SpawnMonster(u32),
     AStar(Vec2),

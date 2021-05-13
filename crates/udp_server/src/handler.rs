@@ -17,13 +17,7 @@ use super::{
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use simple_serializer::{Deserialize, Serialize};
 
-use std::{
-    collections::HashMap,
-    net::{SocketAddr, UdpSocket},
-    sync::{Arc, Mutex},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{collections::{HashMap, HashSet}, net::{SocketAddr, UdpSocket}, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
 
 const DEFAULT_DROP_TIME: Duration = Duration::from_secs(5);
 
@@ -128,6 +122,7 @@ impl DatagramHandler {
         let (s, r): (_, Receiver<ReceivePacket>) = unbounded();
         let mut state = HandlerState::Listening;
         let mut client_ping_times = HashMap::<SocketAddr, Instant>::new();
+        let mut dropped_clients = HashSet::<SocketAddr>::new();
 
         // Spawn a new thread, and move the Sender.
         // The thread undergoes an infinite loop, awaiting
@@ -161,6 +156,7 @@ impl DatagramHandler {
                 ack_resolver.remove_client(addr);
                 s.send(DroppedClient(addr)).unwrap();
                 client_ping_times.remove(&addr);
+                dropped_clients.insert(addr);
             }
 
             // Check if there are any ack resolvers which have timed out
@@ -176,6 +172,12 @@ impl DatagramHandler {
 
             // If a datagram has been received be socket
             if let Ok((amt, addr)) = socket.recv_from(&mut buf) {
+
+                if dropped_clients.contains(&addr) {
+                    socket.send_to(&Type::Drop.serialize(), addr).unwrap();
+                    continue;
+                }
+
                 // Convert the buffer into a string, and parse the
                 // string as a DatagramType
                 let buf = &buf[..amt];
@@ -221,6 +223,11 @@ impl DatagramHandler {
                                     res.addr,
                                 )
                                 .unwrap();
+                        }
+                    }
+                    Type::Ping => {
+                        if client_ping_times.contains_key(&addr) {
+                            client_ping_times.insert(addr, Instant::now());
                         }
                     }
                     _ => {}

@@ -2,9 +2,14 @@
 //!
 //! Christian Schmid, May 2021
 
-use std::collections::{BinaryHeap, HashMap};
+use std::{
+    collections::{BinaryHeap, HashMap},
+    f32::consts::PI,
+};
 
-use crate::state::transforms::{vec2::Vec2, world_transformer::WorldTransformer};
+use crate::state::transforms::{
+    transform::Direction, vec2::Vec2, world_transformer::WorldTransformer,
+};
 
 const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
 
@@ -119,4 +124,32 @@ pub fn find_shortest_path(transformer: &WorldTransformer, start: Vec2, end: Vec2
     }
 
     shortest_path
+}
+
+fn test_visible_players(
+    transformer: &mut WorldTransformer,
+    pos: Vec2,
+    dir: Direction,
+    sight_range: u32,
+) -> Vec<u32> {
+    let mut ids = Vec::new();
+
+    let (begin, end) = if dir == Direction::Left {
+        (PI / 2.0, 3.0 * (PI / 2.0))
+    } else {
+        (-PI / 2.0, PI / 2.0)
+    };
+
+    let mut f = begin;
+    while f < end {
+        for i in 1..sight_range {
+            let spot = Vec2((f.cos() * i as f32) as i32, (f.sin() * i as f32) as i32);
+            if !transformer.is_spot_open(spot) {
+                if transformer.pla
+            }
+        }
+        f += PI / 10.0;
+    }
+
+    ids
 }

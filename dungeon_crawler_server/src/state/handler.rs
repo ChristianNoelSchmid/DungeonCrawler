@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use crate::state::{
     actors::{
@@ -12,10 +12,7 @@ use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
 
-use super::{
-    ai::ai_package_manager::IndependentManager,
-    traits::{Identified, Translator},
-};
+use super::{ai::ai_package_manager::IndependentManager, traits::Identified};
 use super::{
     snapshot::StateSnapshot,
     stats::{Attributes, Stats},
@@ -152,6 +149,9 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                                 all_player_ts: transformer.clone_transforms(),
                             }))
                             .unwrap();
+                    }
+                    RequestType::DropPlayer(id) => {
+                        players.remove(&id);
                     }
                     RequestType::PlayerMoved(id, new_t) => {
                         transformer.from_transform(id, new_t);

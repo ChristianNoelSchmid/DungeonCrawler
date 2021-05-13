@@ -14,7 +14,7 @@ pub enum Type {
     NewMonster(u32, u32, Vec2),   // template_id, instance_id, pos
     Moved(u32, Transform),        // id, transform
     RequestMove(Vec2),
-    Left(u32), // id
+    PlayerLeft(u32), // id
     Dropped,
 }
 
@@ -32,7 +32,7 @@ impl Serialize for Type {
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
             Type::RequestMove(Vec2(x, y)) => format!("RequestMove::{}::{}", x, y),
-            Type::Left(id) => format!("Left::{}", id),
+            Type::PlayerLeft(id) => format!("PlayerLeft::{}", id),
             Type::Dropped => "Drop".to_string(),
         }
     }
@@ -48,7 +48,7 @@ impl Deserialize for Type {
             "Hello" => Type::Hello,
             "Left" => {
                 if let Ok(id) = u32::from_str(segs[1].trim()) {
-                    Type::Left(id)
+                    Type::PlayerLeft(id)
                 } else {
                     Type::Dropped
                 }

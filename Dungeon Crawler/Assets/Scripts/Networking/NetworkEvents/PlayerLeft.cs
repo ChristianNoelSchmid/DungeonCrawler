@@ -9,18 +9,18 @@ namespace DungeonCrawler.Networking.NetworkEvents
  
     public class PlayerLeft : NetworkEvent 
     {
-        public DataModel CallerInfo { get; set; }
+        public DataModel Model { get; set; }
 
-        public PlayerLeft() => CallerInfo = null;
+        public PlayerLeft() => Model = null;
         public PlayerLeft(string value) 
         {
             var args = value.Split(new string[] { "::" }, System.StringSplitOptions.None);
-            CallerInfo = new DataModel
+            Model = new DataModel
             {
                 Id = int.Parse(args[0]),
             };
         }
 
-        public string CreateString() => $"PlayerLeft::{CallerInfo.Serialize()}";
+        public string CreateString() => $"PlayerLeft::{Model.Serialize()}";
     }
 }

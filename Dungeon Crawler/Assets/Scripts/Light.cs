@@ -33,5 +33,11 @@ namespace DungeonCrawler.Monobehaviours
                 _generator.UpdateLight(this);
             _previousPosition = _position.Value;
         }
+
+        private void OnDestroy()
+        {
+            _intensity = 0.0f;
+            _generator.UpdateLight(this);
+        }
     }
 }

@@ -57,5 +57,13 @@ namespace DungeonCrawler.Monobehaviours
 
             UpdatePosition(instanceId, monsterPosition.ToPositionModel());
         }
+        public void RemoveById(int id) 
+        {
+            if(_actorPositions.ContainsKey(id))
+            {
+                GameObject.Destroy(_actorPositions[id].gameObject);
+                _actorPositions.Remove(id);
+            }
+        }
     }
 }

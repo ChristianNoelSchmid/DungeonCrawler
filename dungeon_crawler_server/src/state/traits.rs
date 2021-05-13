@@ -16,7 +16,9 @@ pub trait Translator: Identified {
 }
 
 pub trait Combater {
-    fn attk(&self);
+    fn start_combat_with(&mut self, id: u32);
+    fn in_combat_with(&self) -> Option<u32>;
+    fn sight_range(&self) -> u32;
 }
 
 pub trait AI: Translator + Combater {}

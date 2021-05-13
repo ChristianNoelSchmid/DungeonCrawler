@@ -33,8 +33,9 @@ namespace DungeonCrawler.Networking
         [SerializeField]
         private NetworkEventHandler _eventHandler;
 
-        //[SerializeField]
-        //private DisplayDisconnection _displayDisconnection;
+        [SerializeField]
+        private GameObject _disconnectObject;
+        private bool _disconnected = false; // Set to true to allow disconnectObject to show on main thread
 
         private bool _connected = false;
 
@@ -95,6 +96,7 @@ namespace DungeonCrawler.Networking
             _resolverBuffer = new List<AckResolver>();
             _ackExpectedIndex = 0;
             _ackCurrentIndex = 0;
+            _disconnectObject.SetActive(false);
 
             // Start the AckResolver, and Listening Thread
             _resolverThread = new Thread(StartAckResolver){ IsBackground = true };
@@ -105,6 +107,12 @@ namespace DungeonCrawler.Networking
             StartHandler("127.0.0.1");
         }
 
+        private void Update()
+        {
+            if (_disconnected && !_disconnectObject.activeSelf)
+                _disconnectObject.SetActive(true);
+        }
+
         public bool StartHandler(string ip)
         {
             try
@@ -113,13 +121,6 @@ namespace DungeonCrawler.Networking
 
                 _listeningThread = new Thread(StartReceiving) { IsBackground = true };
                 _listeningThread.Start();
-
-                var pingMsg = Encoding.ASCII.GetBytes((new Pinged()).CreateString());
-                _client.Send(pingMsg, pingMsg.Length);
-
-                //Thread.Sleep(1500);
-                //if(!_connected)
-                    //throw new Exception("Did not receive response from Server.");
             }
             catch (Exception ex)
             {
@@ -269,6 +270,8 @@ namespace DungeonCrawler.Networking
             {
                 switch(msg)
                 {
+                    case string s when s.StartsWith("DRP"):
+                        return new Drop();
                     case string s when s.StartsWith("ACK"):
                         return new Ack(s.Substring(5));
                     case string s when s.StartsWith("REL"):
@@ -310,6 +313,9 @@ namespace DungeonCrawler.Networking
 
                     switch(datagram)
                     {
+                        case Drop _:
+                            _disconnected = true;                                             break;
+                    
                         // Datagram is reliable, but the ACK index is too high.
                         // Ask client to resend awaiting data.
                         case Reliable rel when rel.AckIndex > _ackExpectedIndex:
