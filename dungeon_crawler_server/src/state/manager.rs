@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use crate::state::{
-    ai::ai_goblin::{GOBLIN_IDLE, MELEE_COMBAT},
+    ai::ai_package_collections::{IDLE, MELEE_COMBAT},
     types::ResponseType,
 };
 use crossbeam::channel::{Receiver, Sender};
@@ -14,6 +14,7 @@ use super::{
     monsters::{Monster, MonsterInstance},
     players::Player,
     traits::Identified,
+    transforms::transform::Transform,
 };
 use super::{
     snapshot::StateSnapshot,
@@ -44,7 +45,7 @@ static MONSTERS: [Monster; 1] = [
         id: 0,
         name: "Goblin",
         spawn_chance: 10,
-        sight_range: 4,
+        sight_range: 6,
     },
     /*Monster {
         stats: Stats {
@@ -71,22 +72,22 @@ static MONSTERS: [Monster; 1] = [
 /// a `Sender` and `Receiver`, which can be
 /// cloned to communicate with the state
 ///
-pub struct StateHandler {
+pub struct StateManager {
     s_to_state: Sender<RequestType>,
-    r_from_state: Receiver<ResponseType>,
+    r_at_event: Receiver<ResponseType>,
 }
 
-impl StateHandler {
+impl StateManager {
     ///
     /// Create a new `StateHandler` with the supplied `dungeon`,
     /// starting a new state event loop
     ///
     pub fn new(dungeon: Dungeon) -> Self {
-        let (s_to_state, r_from_state) = state_loop(dungeon);
+        let (s_to_state, r_at_event) = state_loop(dungeon);
 
         Self {
             s_to_state,
-            r_from_state,
+            r_at_event,
         }
     }
     ///
@@ -94,13 +95,13 @@ impl StateHandler {
     /// communicate with the current server state.
     ///
     pub fn get_sender_receiver(&self) -> (Sender<RequestType>, Receiver<ResponseType>) {
-        (self.s_to_state.clone(), self.r_from_state.clone())
+        (self.s_to_state.clone(), self.r_at_event.clone())
     }
 }
 
-fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>) {
+fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>) {
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
-    let (s_from_state, r_from_state) = crossbeam::channel::unbounded();
+    let (s_to_event, r_at_event) = crossbeam::channel::unbounded();
 
     std::thread::spawn(move || -> ! {
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
@@ -125,12 +126,16 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                             id,
                             Actor::new(
                                 id,
-                                Vec2::from_tuple(dungeon.entrance),
-                                Direction::Left,
+                                Stats::new(10, 10, 10),
+                                Attributes::new(5, 5, 5),
+                                Transform::with_values(
+                                    Vec2::from_tuple(dungeon.entrance),
+                                    Direction::Left,
+                                ),
                                 ActorId::Player,
                             ),
                         );
-                        s_from_state
+                        s_to_event
                             .send(ResponseType::StateSnapshot(StateSnapshot {
                                 addr_for: addr,
                                 new_player: (id, "".to_string(), world_stage.pos(id).unwrap()),
@@ -160,7 +165,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
 
                     RequestType::SpawnMonster(id) => {
                         let monster = spawn_monster(id, &mut world_stage);
-                        s_from_state
+                        s_to_event
                             .send(ResponseType::NewMonster(
                                 monster.template.id,
                                 monster.instance_id,
@@ -170,7 +175,7 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                             .unwrap();
                         ai_managers.insert(
                             monster.instance_id,
-                            IndependentManager::new(vec![&GOBLIN_IDLE, &MELEE_COMBAT]),
+                            IndependentManager::new(vec![&IDLE, &MELEE_COMBAT]),
                         );
                         monsters.insert(world_stage.pos(monster.id()).unwrap(), monster);
                     }
@@ -182,13 +187,13 @@ fn state_loop<'a>(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseTy
                 ai_managers
                     .get_mut(&index)
                     .unwrap()
-                    .run(&mut world_stage, monster, &s_from_state);
+                    .run(&mut world_stage, monster, &s_to_event);
             }
             std::thread::sleep(Duration::from_millis(200));
         }
     });
 
-    (s_to_state, r_from_state)
+    (s_to_state, r_at_event)
 }
 
 fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
@@ -208,10 +213,15 @@ fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
     transformer
         .add(
             id,
-            Actor::new(id, open_spot, Direction::Right, ActorId::Monster),
+            Actor::new(
+                id,
+                MONSTERS[index].stats.clone(),
+                MONSTERS[index].attrs,
+                Transform::with_values(open_spot, Direction::Right),
+                ActorId::Monster,
+            ),
         )
         .unwrap();
 
-    let instance = MonsterInstance::new(&MONSTERS[index], id);
-    instance
+    MonsterInstance::new(&MONSTERS[index], id)
 }

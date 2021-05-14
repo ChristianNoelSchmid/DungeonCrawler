@@ -5,7 +5,103 @@ use rand::{thread_rng, RngCore};
 
 use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
 
-use super::ai_packages::{AIPackageResult, DependentPackage, IndependentPackage};
+use super::ai_packages::{AIPackageResult, IndependentPackage};
+
+///
+/// A manager which controls a collection of `IndependentPackage` AIs,
+/// controlling a specified generic `Entity`, where the `IndependentPackage`
+/// relies on the `Entity` itself to determine if the package can be run.
+/// See (`DependentPackage` vs. `IndependentPackage`)
+///
+pub struct IndependentManager<'a, Entity: ?Sized> {
+    /// The collection of packages to consider
+    packages: Vec<&'a IndependentPackage<Entity>>,
+    /// The currently selected package
+    selected: Option<usize>,
+    /// The duration the selected package is run
+    chosen_dur: Duration,
+    /// The time at which the current package began running
+    start_time: Instant,
+}
+
+// Setting `Entity: ?Sized` requires that the Entity is not sized.
+// Generally the IndependentManager requires `trait`s, rather than `struct`s.
+impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
+    /// Creates a new `IndependendManager` with the specified `packages`.
+    /// No package is chosen to run on start, and it's, rather, assumed that
+    /// the AI manager will choose one upon calling `run`.
+    pub fn new(packages: Vec<&'a IndependentPackage<Entity>>) -> Self {
+        Self {
+            packages,
+            selected: None,
+            start_time: Instant::now(),
+            chosen_dur: Duration::from_secs(0),
+        }
+    }
+
+    /// Runs the current `IndependentPackage`,
+    /// or if the package has expired (ie. aborted or timeout)
+    /// chooses a new package.
+    /// Requires the `world_stage` of the game, the `entity`
+    /// being handled, and a `s_to_event Sender<ResponseType>`, to
+    /// inform the `EventManager` of any changes in state.
+    pub fn run(
+        &mut self,
+        world_stage: &mut WorldStage,
+        entity: &mut Entity,
+        s_to_event: &Sender<ResponseType>,
+    ) {
+        if Instant::now() - self.start_time < self.chosen_dur {
+            if let Some(selected) = self.selected {
+                if (self.packages[selected].step_next)(world_stage, entity, s_to_event)
+                    != AIPackageResult::Abort
+                {
+                    return;
+                }
+            }
+        }
+        self.select_new_pkg(world_stage, entity, s_to_event);
+    }
+
+    fn select_new_pkg(
+        &mut self,
+        world_stage: &mut WorldStage,
+        entity: &mut Entity,
+        s_to_event: &Sender<ResponseType>,
+    ) {
+        let packages = self
+            .packages
+            .iter()
+            .filter(|p| (p.req)(world_stage, entity));
+
+        let mut count =
+            ((thread_rng().next_u32() % packages.fold(0, |acc, x| acc + x.pick_count)) + 1) as i32;
+
+        for (index, package) in self.packages.iter().enumerate() {
+            if (package.req)(world_stage, entity) {
+                count -= package.pick_count as i32;
+                if count <= 0 {
+                    let sel_pkg = self.packages[index as usize];
+                    self.selected = Some(index as usize);
+                    (sel_pkg.on_start)(world_stage, entity, s_to_event);
+                    self.start_time = Instant::now();
+
+                    let rnd_dur = (thread_rng().next_u64() as u128
+                        % (sel_pkg.intv_range.1 - sel_pkg.intv_range.0).as_millis()
+                        + sel_pkg.intv_range.0.as_millis())
+                        as u64;
+                    self.chosen_dur = Duration::from_millis(rnd_dur);
+                }
+            }
+        }
+    }
+}
+
+/*
+TODO - eventually build a DependentManger, where the
+AI Entity relies on another Entity to determine whether
+they can run a certain package (game example: a goblin's
+base is being attacked, run back to base!)
 
 pub struct DependentManager<'a, ReqEntity, AIEntity> {
     packages: Vec<&'a DependentPackage<ReqEntity, AIEntity>>,
@@ -14,121 +110,11 @@ pub struct DependentManager<'a, ReqEntity, AIEntity> {
 }
 
 impl<'a, ReqEntity, AIEntity> DependentManager<'a, ReqEntity, AIEntity> {
-    pub fn new(ai_packages: Vec<&'a DependentPackage<ReqEntity, AIEntity>>) -> Self {
-        Self {
-            packages: ai_packages,
-            selected: None,
-            start_time: Instant::now(),
-        }
+    pub fn new(...) -> Self {
+        todo!()
     }
-    pub fn run(
-        &mut self,
-        transformer: &mut WorldStage,
-        req_ent: &ReqEntity,
-        ai_ent: &mut AIEntity,
-        s_to_event: &Sender<ResponseType>,
-    ) {
-        let mut choose_new = false;
-        if let Some(pack_ind) = self.selected {
-            if Instant::now() - self.start_time < self.packages[pack_ind].interval {
-                if (self.packages[pack_ind].step_next)(ai_ent, s_to_event) == AIPackageResult::Abort
-                {
-                    self.selected = None;
-                }
-            } else {
-                choose_new = true;
-            }
-        } else {
-            choose_new = true;
-        }
-
-        if choose_new {
-            let packages = self.packages.iter().filter(|p| (p.req)(req_ent));
-
-            let mut choice_ind = 0;
-            let mut count = (thread_rng().next_u32()
-                % packages.clone().fold(0, |acc, x| acc + x.pick_count))
-                as i32;
-
-            for package in packages {
-                count -= package.pick_count as i32;
-                if count < 0 {
-                    self.selected = Some(choice_ind as usize);
-                    (self.packages[choice_ind as usize].on_start)(ai_ent);
-                    break;
-                }
-                choice_ind += 1;
-            }
-        }
+    pub fn run(...)) {
+        todo!()
     }
 }
-
-pub struct IndependentManager<'a, Entity: ?Sized> {
-    packages: Vec<&'a IndependentPackage<Entity>>,
-    selected: Option<usize>,
-    chosen_dur: Duration,
-    start_time: Instant,
-}
-
-impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
-    pub fn new(ai_packages: Vec<&'a IndependentPackage<Entity>>) -> Self {
-        Self {
-            packages: ai_packages,
-            selected: None,
-            start_time: Instant::now(),
-            chosen_dur: Duration::from_secs(0),
-        }
-    }
-    pub fn run(
-        &mut self,
-        transformer: &mut WorldStage,
-        entity: &mut Entity,
-        s_to_event: &Sender<ResponseType>,
-    ) {
-        let mut choose_new = false;
-        if let Some(selected) = self.selected {
-            if Instant::now() - self.start_time < self.chosen_dur {
-                if (self.packages[selected].step_next)(transformer, entity, s_to_event)
-                    == AIPackageResult::Abort
-                {
-                    self.selected = None;
-                    choose_new = true;
-                }
-            } else {
-                choose_new = true;
-            }
-        } else {
-            choose_new = true;
-        }
-
-        if choose_new {
-            let packages = self
-                .packages
-                .iter()
-                .filter(|p| (p.req)(transformer, entity));
-
-            let mut count = ((thread_rng().next_u32()
-                % packages.fold(0, |acc, x| acc + x.pick_count))
-                + 1) as i32;
-
-            for (index, package) in self.packages.iter().enumerate() {
-                if (package.req)(transformer, entity) {
-                    count -= package.pick_count as i32;
-                    if count <= 0 {
-                        let sel_pkg = self.packages[index as usize];
-                        self.selected = Some(index as usize);
-                        (sel_pkg.on_start)(transformer, entity);
-                        self.start_time = Instant::now();
-
-                        let rnd_dur = thread_rng().next_u64()
-                            % (sel_pkg.intv_range.1 - sel_pkg.intv_range.0).as_secs()
-                            + sel_pkg.intv_range.0.as_secs();
-                        self.chosen_dur = Duration::from_secs(rnd_dur);
-
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
+ */

@@ -21,6 +21,8 @@ namespace DungeonCrawler.Monobehaviours
         private void Awake() =>
             _actorPositions = new Dictionary<int, GridPosition>();
 
+        private readonly WaitForEndOfFrame _waitForEndOfFrame = new WaitForEndOfFrame();
+
         public void UpdatePosition(int id, PositionModel position)
         {
             // Because the server may not have sent the client the new
@@ -64,6 +66,40 @@ namespace DungeonCrawler.Monobehaviours
                 GameObject.Destroy(_actorPositions[id].gameObject);
                 _actorPositions.Remove(id);
             }
+        }
+
+        public void HitOther(int attId, int defId) 
+        {
+            if(_actorPositions.ContainsKey(attId) && _actorPositions.ContainsKey(defId))
+            {
+                var dir = ((Vector2)(_actorPositions[attId].Value - _actorPositions[defId].Value)).normalized;
+                switch (dir.x, dir.y)
+                {
+                    case (var x, var y) when y > 0.5f:
+                        StartCoroutine(AttackAnim(attId, 1)); break;
+                    case (var x, var y) when y < -0.5f:
+                        StartCoroutine(AttackAnim(attId, 2)); break;
+                    case (var x, var y) when x < -0.5f:
+                        StartCoroutine(AttackAnim(attId, 3)); break;
+                    default:
+                        StartCoroutine(AttackAnim(attId, 4)); break;
+                }
+            }
+        }
+
+        private IEnumerator AttackAnim(int attId, int dir) 
+        {
+            var animator = _actorPositions[attId].GetComponent<Animator>();
+            animator.SetInteger("attackDir", dir);
+            yield return _waitForEndOfFrame; 
+
+            animator.SetInteger("attackDir", 0);
+
+        }
+
+        public void MissOther(int attId, int defId) 
+        {
+            HitOther(attId, defId);
         }
     }
 }

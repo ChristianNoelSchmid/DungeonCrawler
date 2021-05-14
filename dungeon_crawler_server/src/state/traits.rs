@@ -1,6 +1,11 @@
 use std::time::Instant;
 
-use super::transforms::vec2::Vec2;
+use rand::{thread_rng, RngCore};
+
+use super::{
+    stats::{Attributes, Stats},
+    transforms::vec2::Vec2,
+};
 
 pub trait Identified {
     fn id(&self) -> u32;
@@ -17,6 +22,11 @@ pub trait Translator: Identified {
     fn next_step(&mut self) -> Option<Vec2>;
 }
 
+pub trait Qualities {
+    fn stats(&mut self) -> &mut Stats;
+    fn attrs(&self) -> &Attributes;
+}
+
 pub trait Combater {
     fn start_combat_with(&mut self, id: u32);
     fn in_combat_with(&self) -> Option<u32>;
@@ -25,6 +35,11 @@ pub trait Combater {
 
     fn last_sighting(&self) -> Instant;
     fn set_last_sighting(&mut self, last: Instant);
+}
+
+pub enum AttackResult {
+    Hit(u32, i32),
+    Miss(u32),
 }
 
 pub trait AI: Translator + Combater {}

@@ -21,48 +21,6 @@ pub enum AIPackageResult {
 /// A structure which holds all the information
 /// for an AI entity to implement actions and
 /// directions based on the given circumstances
-/// There are two generics associated with this struct:
-///     
-/// `ReqEntity` - the trait used to determine what requirements are
-///         necessary for the AIPackage to be run on the given
-///         `Entity`
-///
-/// `AIEntity` - the collection of traits which will implement the
-///            AI actions.
-///
-#[derive(Clone, Copy)]
-pub struct DependentPackage<ReqEntity, AIEntity> {
-    ///
-    /// Method which determines if the given
-    /// `Req` traits' conditions are met
-    ///
-    pub req: fn(entity: &ReqEntity) -> bool,
-    ///
-    /// Method that runs upon the `AIPackage`
-    /// starting. Initial actions of the `Entity`.
-    ///
-    pub on_start: fn(entity: &mut AIEntity),
-    ///
-    /// An increment in the `Entity`'s AI system
-    ///
-    pub step_next: fn(entity: &mut AIEntity, s_to_event: &Sender<ResponseType>) -> AIPackageResult,
-    ///
-    /// The amount of time the `AIPackage` will run
-    /// on the given Entity, assuming that `req` is
-    /// continually met.
-    ///
-    pub interval: Duration,
-    ///
-    /// The chance of the AIPackage being chosen among
-    /// several when the `AIManager` chooses.
-    ///
-    pub pick_count: u32,
-}
-
-///
-/// A structure which holds all the information
-/// for an AI entity to implement actions and
-/// directions based on the given circumstances
 /// There is one generic associated with this struct:
 ///     
 /// `Entity` - the trait used to determine what requirements are
@@ -79,7 +37,7 @@ pub struct IndependentPackage<Entity: ?Sized> {
     /// Method that runs upon the `AIPackage`
     /// starting. Initial actions of the `Entity`.
     ///
-    pub on_start: fn(&mut WorldStage, entity: &mut Entity),
+    pub on_start: fn(&mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>),
     ///
     /// An increment in the `Entity`'s AI system
     ///
@@ -100,3 +58,14 @@ pub struct IndependentPackage<Entity: ?Sized> {
     ///
     pub pick_count: u32,
 }
+
+/*
+TODO - eventually build a DependentManger, where the
+AI Entity relies on another Entity to determine whether
+they can run a certain package (game example: a goblin's
+base is being attacked, run back to base!)
+
+pub struct DependentPackage<ReqEntity, AIEntity> {
+    todo!()
+}
+*/

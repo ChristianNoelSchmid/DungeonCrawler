@@ -19,4 +19,6 @@ pub enum ResponseType {
     StateSnapshot(StateSnapshot),
     NewMonster(u32, u32, Vec2, Direction),
     MonsterMoved(u32, Transform),
+    Hit(u32, u32, i32),
+    Miss(u32, u32),
 }

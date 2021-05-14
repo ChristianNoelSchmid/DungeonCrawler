@@ -1,11 +1,11 @@
 pub mod events {
-    pub mod handler;
+    pub mod manager;
     pub mod types;
 }
 
 pub mod state {
     pub mod actor;
-    pub mod handler;
+    pub mod manager;
     pub mod monsters;
     pub mod players;
     pub mod snapshot;
@@ -14,7 +14,7 @@ pub mod state {
     pub mod types;
 
     pub mod ai {
-        pub mod ai_goblin;
+        pub mod ai_package_collections;
         pub mod ai_package_manager;
         pub mod ai_packages;
     }

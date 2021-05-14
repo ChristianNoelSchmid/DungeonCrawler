@@ -1,22 +1,22 @@
 #[derive(Debug, Clone, Copy)]
 pub struct Stats {
     pub max_health: u32,
-    pub cur_health: u32,
+    pub cur_health: i32,
     pub max_stamina: u32,
-    pub cur_stamina: u32,
+    pub cur_stamina: i32,
     pub max_magicka: u32,
-    pub cur_magicka: u32,
+    pub cur_magicka: i32,
 }
 
 impl Stats {
     pub fn new(max_health: u32, max_stam: u32, max_magicka: u32) -> Self {
         Self {
             max_health,
-            cur_health: max_health,
+            cur_health: max_health as i32,
             max_stamina: max_stam,
-            cur_stamina: max_stam,
+            cur_stamina: max_stam as i32,
             max_magicka,
-            cur_magicka: max_magicka,
+            cur_magicka: max_magicka as i32,
         }
     }
 }

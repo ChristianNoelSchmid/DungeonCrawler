@@ -13,8 +13,9 @@ pub enum Type {
     NewPlayer(u32, String, Vec2), // id, (x, y)
     NewMonster(u32, u32, Vec2),   // template_id, instance_id, pos
     Moved(u32, Transform),        // id, transform
-    RequestMove(Vec2),
-    PlayerLeft(u32), // id
+    PlayerLeft(u32),              // id
+    Hit(u32, u32, i32),
+    Miss(u32, u32),
     Dropped,
 }
 
@@ -31,10 +32,11 @@ impl Serialize for Type {
                 format!("NewMonster::{}::{}::{}", t_id, i_id, pos.serialize())
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
-            Type::RequestMove(Vec2(x, y)) => format!("RequestMove::{}::{}", x, y),
             Type::PlayerLeft(id) => format!("PlayerLeft::{}", id),
+            Type::Hit(att_id, def_id, cur_health) => format!("Hit::{}::{}::{}", att_id, def_id, cur_health),
+            Type::Miss(att_id, def_id) => format!("Miss::{}::{}", att_id, def_id),
             Type::Dropped => "Drop".to_string(),
-        }
+         }
     }
 }
 
@@ -67,10 +69,6 @@ impl Deserialize for Type {
                     _ => Type::Dropped,
                 }
             }
-            "RequestMove" => match (i32::from_str(segs[1].trim()), i32::from_str(segs[2].trim())) {
-                (Ok(x), Ok(y)) => Type::RequestMove(Vec2(x, y)),
-                _ => Type::Dropped,
-            },
             _ => Type::Dropped,
         }
     }

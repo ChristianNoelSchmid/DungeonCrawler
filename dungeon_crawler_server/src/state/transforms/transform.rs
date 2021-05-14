@@ -16,10 +16,10 @@ impl Display for Direction {
 }
 impl Direction {
     pub fn from_u32(n: u32) -> Self {
-        return match n {
+        match n {
             1 => Direction::Right,
             _ => Direction::Left,
-        };
+        }
     }
 }
 
@@ -41,6 +41,12 @@ impl Transform {
             pos: position,
             dir: direction,
         }
+    }
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -29,7 +29,6 @@ pub struct Monster {
 pub struct MonsterInstance {
     pub template: &'static Monster,
     pub instance_id: u32,
-    pub stats: Stats,
     pub path: Vec<Vec2>,
 
     pub in_combat_with: Option<u32>,
@@ -41,7 +40,6 @@ impl MonsterInstance {
         Self {
             template,
             instance_id,
-            stats: template.stats.clone(),
             path: Vec::new(),
             in_combat_with: None,
             last_sighting: Instant::now(),
@@ -54,8 +52,6 @@ impl Identified for MonsterInstance {
         self.instance_id
     }
 }
-
-impl AI for MonsterInstance {}
 
 impl Translator for MonsterInstance {
     fn target(&self) -> Option<&Vec2> {
@@ -89,6 +85,8 @@ impl Combater for MonsterInstance {
         self.last_sighting = last;
     }
 }
+
+impl AI for MonsterInstance {}
 
 impl Serialize for MonsterInstance {
     type SerializeTo = String;

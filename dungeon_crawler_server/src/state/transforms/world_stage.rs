@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use rand::{prelude::IteratorRandom, thread_rng};
+use rand::{RngCore, prelude::IteratorRandom, thread_rng};
 
-use crate::state::actor::{Actor, ActorId};
+use crate::state::{actor::{Actor, ActorId}, traits::{AttackResult, Qualities}};
 
 use super::{
     transform::{Direction, Transform},
@@ -21,14 +21,14 @@ impl WorldStage {
     pub fn new(paths: HashSet<Vec2>) -> Self {
         Self {
             actors: HashMap::new(),
-            paths: paths,
+            paths,
             filled_spots: HashSet::new(),
         }
     }
-    pub fn actor<'a>(&'a self, id: u32) -> Option<&'a Actor> {
-        self.actors.get(&id)
+    pub fn actor(&mut self, id: u32) -> Option<&mut Actor> {
+        self.actors.get_mut(&id)
     }
-    pub fn clone_transforms<'a>(&'a self) -> Vec<(u32, Transform)> {
+    pub fn clone_transforms(&self) -> Vec<(u32, Transform)> {
         self.actors
             .clone()
             .into_iter()
@@ -36,12 +36,13 @@ impl WorldStage {
             .collect()
     }
     pub fn add(&mut self, id: u32, actor: Actor) -> Option<&Actor> {
-        if !self.actors.contains_key(&id) {
-            self.actors.insert(id, actor);
-
-            return Some(&self.actors[&id]);
+        match self.actors.get(&id) {
+            Some(_a) => None,
+            None => {
+                self.actors.insert(id, actor);
+                Some(&self.actors[&id])
+            }
         }
-        None
     }
     pub fn remove(&mut self, id: u32) -> bool {
         self.actors.remove(&id).is_some()
@@ -55,18 +56,10 @@ impl WorldStage {
         None
     }
     pub fn pos(&self, id: u32) -> Option<Vec2> {
-        return if let Some(a) = self.actors.get(&id) {
-            Some(a.tr.pos)
-        } else {
-            None
-        };
+        self.actors.get(&id).map(|a| a.tr.pos)
     }
     pub fn dir(&self, id: u32) -> Option<Direction> {
-        return if let Some(a) = self.actors.get(&id) {
-            Some(a.tr.dir)
-        } else {
-            None
-        };
+        self.actors.get(&id).map(|a| a.tr.dir)
     }
     pub fn move_pos(&mut self, id: u32, new_pos: Vec2) -> bool {
         if let Some(a) = self.actors.get_mut(&id) {
@@ -74,11 +67,11 @@ impl WorldStage {
                 self.filled_spots.remove(&a.tr.pos);
                 self.filled_spots.insert(new_pos);
 
-                if new_pos.0 > a.tr.pos.0 {
-                    a.tr.dir = Direction::Right;
-                } else if new_pos.0 < a.tr.pos.0 {
-                    a.tr.dir = Direction::Left;
-                }
+                a.tr.dir = match new_pos.0 {
+                    p if p > a.tr.pos.0 => Direction::Right,
+                    p if p < a.tr.pos.0 => Direction::Left,
+                    _ => a.tr.dir,
+                };
 
                 a.tr.pos = new_pos;
 
@@ -103,11 +96,10 @@ impl WorldStage {
     pub fn is_actor_id_on_spot(&self, actor_id: ActorId, spot: Vec2) -> Option<&Actor> {
         self.actors
             .values()
-            .filter(|a| a.actor_id == actor_id && a.tr.pos == spot)
-            .next()
+            .find(|a| a.actor_id == actor_id && a.tr.pos == spot)
     }
 
-    pub fn is_on_paths(&self, spot: Vec2) -> bool {
+    pub fn is_on_path(&self, spot: Vec2) -> bool {
         self.paths.contains(&spot)
     }
 
@@ -151,5 +143,21 @@ impl WorldStage {
             }
         }
         None
+    }
+
+    pub fn attk(&mut self, attk_id: u32, defd_id: u32) -> AttackResult {
+        let attacker = &self.actors[&attk_id];
+        let attk_damage = attacker.attrs.might as i32;
+
+        let defender = &self.actors[&defd_id];
+
+        if thread_rng().next_u32() % 100 > defender.attrs().fines {
+            let health = &mut self.actors.get_mut(&defd_id).unwrap().stats().cur_health;
+            *health -= attk_damage;
+
+            AttackResult::Hit(attk_id, *health)
+        } else {
+            AttackResult::Miss(attk_id)
+        }
     }
 }

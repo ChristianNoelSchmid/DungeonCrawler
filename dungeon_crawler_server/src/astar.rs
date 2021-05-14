@@ -51,7 +51,7 @@ impl PartialOrd for Path {
 /// of the currently `filled_spots` on the `paths`.
 ///
 pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> Vec<Vec2> {
-    if !transformer.is_on_paths(start) || !transformer.is_on_paths(end) {
+    if !transformer.is_on_path(start) || !transformer.is_on_path(end) {
         return vec![start];
     }
 
@@ -87,7 +87,7 @@ pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> V
         for path in POS_TO_CONSIDER.iter() {
             let new_pos = u.pos + *path;
             if transformer.is_spot_open(new_pos)
-                || (transformer.is_on_paths(new_pos) && new_pos == end)
+                || (transformer.is_on_path(new_pos) && new_pos == end)
             {
                 let new_cost = dist_map[&u.pos] + 1;
 
@@ -131,16 +131,16 @@ pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> V
     shortest_path
 }
 
-pub fn test_visible_actors(
+pub fn visible_actors(
     world_stage: &mut WorldStage,
     tr: Transform,
-    actor_id: ActorId,
+    actor_ids: &[ActorId],
     sight_range: u32,
 ) -> HashSet<u32> {
     let mut ids = HashSet::new();
 
     let (begin, end) = if tr.dir == Direction::Left {
-        (PI / 2.0, (3.0 * PI) / 2.0)
+        (PI / 2.0, 3.0 * PI / 2.0)
     } else {
         (-PI / 2.0, PI / 2.0)
     };
@@ -149,14 +149,21 @@ pub fn test_visible_actors(
     let mut i;
     while f <= end {
         i = 1.0;
-        while i < sight_range as f32 {
+        while i < sight_range as f32
+            && i <= sight_range as f32
+                * ((PI / 2.0 - ((f - begin).abs() - (f - end).abs())) / (PI / 2.0))
+                + 1.0
+        {
             let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);
-            if let Some(actor) = world_stage.is_actor_id_on_spot(actor_id, spot) {
-                ids.insert(actor.id);
-                break;
-            } else if !world_stage.is_spot_open(spot) {
+            if !world_stage.is_on_path(spot) {
                 break;
             }
+            for id in actor_ids {
+                if let Some(actor) = world_stage.is_actor_id_on_spot(*id, spot) {
+                    ids.insert(actor.id);
+                }
+            }
+
             i += 1.0;
         }
         f += PI / (8.0 * sight_range as f32);

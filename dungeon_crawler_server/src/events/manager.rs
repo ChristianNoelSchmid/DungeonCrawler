@@ -8,13 +8,13 @@ use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacke
 use crate::{
     events::types::Type,
     state::{
-        handler::StateHandler,
+        manager::StateManager,
         snapshot::StateSnapshot,
         types::{RequestType, ResponseType},
     },
 };
 
-pub struct EventHandler {
+pub struct EventManager {
     r_from_client: PacketReceiver,
     s_to_clients: PacketSender,
     s_to_state: Sender<RequestType>,
@@ -24,7 +24,7 @@ pub struct EventHandler {
     id_next: u32,
 }
 
-impl EventHandler {
+impl EventManager {
     ///
     /// Creates a new EventHandler, and receives a DatagramHandler's
     /// client Receiver `r_from_client` and Sender `s_to_clients`.
@@ -32,23 +32,21 @@ impl EventHandler {
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
         let dun = Dungeon::new(100, 100);
-        let state = StateHandler::new(dun);
+        let state = StateManager::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
         for i in 0..10 {
             s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
         }
 
-        let handler = EventHandler {
+        EventManager {
             r_from_client,
             s_to_clients,
             s_to_state,
             r_from_state,
             addrs: HashMap::new(),
             id_next: 10,
-        };
-
-        handler
+        }
     }
 
     ///
@@ -75,10 +73,10 @@ impl EventHandler {
     /// be sent back to the clients.
     ///
     fn parse_client_packet(&mut self, packet: ReceivePacket) -> Vec<SendPacket> {
-        return match packet {
+        match packet {
             ReceivePacket::DroppedClient(addr) => self.drop_client(addr),
             ReceivePacket::ClientMessage(addr, msg) => self.parse_client_msg((addr, msg)),
-        };
+        }
     }
 
     ///
@@ -131,9 +129,6 @@ impl EventHandler {
                     });
                 }
             }
-            Type::RequestMove(position) => {
-                self.s_to_state.send(RequestType::AStar(position)).unwrap();
-            }
             _ => {}
         };
         snd_packets
@@ -164,6 +159,20 @@ impl EventHandler {
                 for packet in snd_msg_packets.into_iter() {
                     self.s_to_clients.send(packet).unwrap();
                 }
+            }
+            ResponseType::Hit(att_id, def_id, cur_health) => {
+                self.s_to_clients.send(SendPacket {
+                    addrs: self.all_addrs(),
+                    is_rel: false,
+                    msg: Type::Hit(att_id, def_id, cur_health).serialize(),
+                }).unwrap();
+            }
+            ResponseType::Miss(att_id, def_id) => {
+                self.s_to_clients.send(SendPacket {
+                    addrs: self.all_addrs(),
+                    is_rel: false,
+                    msg: Type::Miss(att_id, def_id).serialize(),
+                }).unwrap();
             }
         }
     }
