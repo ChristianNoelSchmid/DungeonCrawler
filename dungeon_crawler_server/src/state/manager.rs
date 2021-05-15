@@ -45,7 +45,7 @@ static MONSTERS: [Monster; 1] = [
         id: 0,
         name: "Goblin",
         spawn_chance: 10,
-        sight_range: 6,
+        sight_range: 7,
     },
     /*Monster {
         stats: Stats {
@@ -118,6 +118,10 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
         let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
 
         loop {
+            if let Some(pl) = players.values().next() {
+                println!("pl: {:?}", world_stage.actor(pl.id()).unwrap().tr);
+                println!("mn: {:?}", world_stage.actor(monsters.values().next().unwrap().id()).unwrap().tr);
+            }
             // RequestType Reception
             if let Ok(request) = r_at_state.try_recv() {
                 match request {

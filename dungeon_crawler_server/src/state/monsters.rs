@@ -3,15 +3,12 @@ use std::time::Instant;
 use simple_serializer::Serialize;
 
 use crate::{
-    astar::visible_actors,
     state::{
         stats::{Attributes, Stats},
         traits::{Combater, Identified, Translator, AI},
         transforms::vec2::Vec2,
     },
 };
-
-use super::transforms::world_stage::WorldStage;
 
 ///
 /// Represents a particular monster type

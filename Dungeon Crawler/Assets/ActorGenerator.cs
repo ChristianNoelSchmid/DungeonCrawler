@@ -34,6 +34,10 @@ namespace DungeonCrawler.Monobehaviours
             }
         }
 
+        public void AddClientPlayer(GridPosition position, int id) {
+            _actorPositions[id] = position;
+        }
+
         public void SpawnPlayer(Player player)
         {
             GridPosition playerPos;
@@ -72,28 +76,28 @@ namespace DungeonCrawler.Monobehaviours
         {
             if(_actorPositions.ContainsKey(attId) && _actorPositions.ContainsKey(defId))
             {
-                var dir = ((Vector2)(_actorPositions[attId].Value - _actorPositions[defId].Value)).normalized;
-                switch (dir.x, dir.y)
-                {
-                    case (var x, var y) when y > 0.25f:
-                        StartCoroutine(AttackAnim(attId, 1)); break;
-                    case (var x, var y) when y < -0.25f:
-                        StartCoroutine(AttackAnim(attId, 2)); break;
-                    case (var x, var y) when x < -0.25f:
-                        StartCoroutine(AttackAnim(attId, 3)); break;
-                    default:
-                        StartCoroutine(AttackAnim(attId, 4)); break;
-                }
+                var dir = (_actorPositions[attId].Value - _actorPositions[defId].Value);
+                Debug.Log(dir);
+                StartCoroutine(AttackAnim(
+                    attId, 
+                    (dir.x, dir.y) switch 
+                    {
+                        (0, 1) => 1,
+                        (0, -1) => 2,
+                        (-1, 0) => 3,
+                        _ => 4
+                    }
+                ));
             }
         }
 
         private IEnumerator AttackAnim(int attId, int dir) 
         {
             var animator = _actorPositions[attId].GetComponent<Animator>();
-            animator.SetInteger("attackDir", dir);
+            animator.SetInteger("AttackDirection", dir);
             yield return _waitForEndOfFrame; 
 
-            animator.SetInteger("attackDir", 0);
+            animator.SetInteger("AttackDirection", 0);
 
         }
 

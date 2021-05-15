@@ -5,7 +5,7 @@ use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
 use crate::state::{
     actor::{Actor, ActorId},
-    traits::{AttackResult, Qualities},
+    traits::{Qualities},
     types::ResponseType,
 };
 
@@ -62,8 +62,8 @@ impl WorldStage {
         if let Some(act) = self.actors.get_mut(&id) {
             self.filled_spots.remove(&act.tr.pos);
             self.filled_spots.insert(new_t.pos); 
-                
-            act.tr.dir = new_t.dir;
+            
+            act.tr = new_t;
             return Some(act.tr);
         }
         None

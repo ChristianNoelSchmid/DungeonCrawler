@@ -156,6 +156,8 @@ namespace DungeonCrawler.Networking
                     _playerPosition.Value = _dungeonGen.Dungeon.Entrance;
                     _playerId = welcome.Model.Id;
 
+                    _actorGen.AddClientPlayer(_playerPosition, _playerId);
+
                     StartCoroutine(BeginPinging());
                     break;
                 
@@ -181,6 +183,7 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case Hit hit:
+                    Debug.Log("Hit! pl health left: " + hit.Model.Value.HealthLeft.ToString());
                     _actorGen.HitOther(hit.Model.Id, hit.Model.Value.DefenderId);
                     break;
 

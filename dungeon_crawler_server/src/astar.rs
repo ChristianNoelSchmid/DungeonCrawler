@@ -12,7 +12,7 @@ use crate::state::{
     transforms::{
         transform::{Direction, Transform},
         vec2::Vec2,
-        world_stage::{self, WorldStage},
+        world_stage::WorldStage,
     },
 };
 

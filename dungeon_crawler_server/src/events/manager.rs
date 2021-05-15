@@ -31,11 +31,13 @@ impl EventManager {
     /// This enables concurrent communication with the DatagramHandler.
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
-        let dun = Dungeon::new(10, 10);
+        let dun = Dungeon::new(50, 50);
         let state = StateManager::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
-        s_to_state.send(RequestType::SpawnMonster(0)).unwrap();
+        for i in 0..9 {
+            s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
+        }
 
         EventManager {
             r_from_client,
@@ -43,7 +45,7 @@ impl EventManager {
             s_to_state,
             r_from_state,
             addrs: HashMap::new(),
-            id_next: 1,
+            id_next: 10,
         }
     }
 
