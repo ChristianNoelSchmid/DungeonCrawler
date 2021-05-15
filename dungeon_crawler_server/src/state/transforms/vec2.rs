@@ -8,8 +8,8 @@ impl Vec2 {
     pub fn from_tuple(tuple: (i32, i32)) -> Self {
         Vec2(tuple.0, tuple.1)
     }
-    pub fn distance(point1: Vec2, point2: Vec2) -> f32 {
-        f32::sqrt(((point1.0 - point2.0) as f32).powi(2) + ((point1.1 - point2.1) as f32).powi(2))
+    pub fn distance(&self, other: Vec2) -> f32 {
+        f32::sqrt(((self.0 - other.0).pow(2) + (self.1 - other.1).pow(2)) as f32)
     }
 }
 impl Add for Vec2 {

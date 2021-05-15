@@ -1,7 +1,4 @@
-use crate::state::transforms::{
-    transform::{Direction, Transform},
-    vec2::Vec2,
-};
+use crate::state::transforms::transform::Transform;
 
 use super::{
     stats::{Attributes, Stats},

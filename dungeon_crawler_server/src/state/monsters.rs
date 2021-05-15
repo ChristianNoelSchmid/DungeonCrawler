@@ -2,11 +2,16 @@ use std::time::Instant;
 
 use simple_serializer::Serialize;
 
-use crate::state::{
-    stats::{Attributes, Stats},
-    traits::{Combater, Identified, Translator, AI},
-    transforms::vec2::Vec2,
+use crate::{
+    astar::visible_actors,
+    state::{
+        stats::{Attributes, Stats},
+        traits::{Combater, Identified, Translator, AI},
+        transforms::vec2::Vec2,
+    },
 };
+
+use super::transforms::world_stage::WorldStage;
 
 ///
 /// Represents a particular monster type
@@ -31,7 +36,7 @@ pub struct MonsterInstance {
     pub instance_id: u32,
     pub path: Vec<Vec2>,
 
-    pub in_combat_with: Option<u32>,
+    pub combat_target: Option<u32>,
     pub last_sighting: Instant,
 }
 
@@ -41,7 +46,7 @@ impl MonsterInstance {
             template,
             instance_id,
             path: Vec::new(),
-            in_combat_with: None,
+            combat_target: None,
             last_sighting: Instant::now(),
         }
     }
@@ -66,14 +71,14 @@ impl Translator for MonsterInstance {
 }
 
 impl Combater for MonsterInstance {
-    fn start_combat_with(&mut self, id: u32) {
-        self.in_combat_with = Some(id)
+    fn combat_target(&self) -> Option<u32> {
+        self.combat_target
     }
-    fn in_combat_with(&self) -> Option<u32> {
-        self.in_combat_with
+    fn start_combat_with(&mut self, id: u32) {
+        self.combat_target = Some(id)
     }
     fn stop_combat(&mut self) {
-        self.in_combat_with = None;
+        self.combat_target = None;
     }
     fn sight_range(&self) -> u32 {
         self.template.sight_range
@@ -81,8 +86,8 @@ impl Combater for MonsterInstance {
     fn last_sighting(&self) -> Instant {
         self.last_sighting
     }
-    fn set_last_sighting(&mut self, last: Instant) {
-        self.last_sighting = last;
+    fn reset_last_sighting(&mut self) {
+        self.last_sighting = Instant::now();
     }
 }
 

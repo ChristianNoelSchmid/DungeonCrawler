@@ -15,7 +15,7 @@ namespace DungeonCrawler.Monobehaviours
             if(_generator ==  null)
                 _generator = GameObject.FindObjectOfType<LightGenerator>();
 
-            _renderer = GetComponent<SpriteRenderer>();
+            _renderer = GetComponentInChildren<SpriteRenderer>();
             _position = GetComponent<GridPosition>();
             _originalColor = _renderer.color;
         }

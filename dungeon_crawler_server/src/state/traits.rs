@@ -1,10 +1,8 @@
-use std::time::Instant;
-
-use rand::{thread_rng, RngCore};
+use std::{collections::HashSet, time::Instant};
 
 use super::{
     stats::{Attributes, Stats},
-    transforms::vec2::Vec2,
+    transforms::{vec2::Vec2, world_stage::WorldStage},
 };
 
 pub trait Identified {
@@ -28,13 +26,14 @@ pub trait Qualities {
 }
 
 pub trait Combater {
+    fn combat_target(&self) -> Option<u32>;
+
     fn start_combat_with(&mut self, id: u32);
-    fn in_combat_with(&self) -> Option<u32>;
     fn stop_combat(&mut self);
     fn sight_range(&self) -> u32;
 
     fn last_sighting(&self) -> Instant;
-    fn set_last_sighting(&mut self, last: Instant);
+    fn reset_last_sighting(&mut self);
 }
 
 pub enum AttackResult {

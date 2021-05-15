@@ -75,11 +75,11 @@ namespace DungeonCrawler.Monobehaviours
                 var dir = ((Vector2)(_actorPositions[attId].Value - _actorPositions[defId].Value)).normalized;
                 switch (dir.x, dir.y)
                 {
-                    case (var x, var y) when y > 0.5f:
+                    case (var x, var y) when y > 0.25f:
                         StartCoroutine(AttackAnim(attId, 1)); break;
-                    case (var x, var y) when y < -0.5f:
+                    case (var x, var y) when y < -0.25f:
                         StartCoroutine(AttackAnim(attId, 2)); break;
-                    case (var x, var y) when x < -0.5f:
+                    case (var x, var y) when x < -0.25f:
                         StartCoroutine(AttackAnim(attId, 3)); break;
                     default:
                         StartCoroutine(AttackAnim(attId, 4)); break;

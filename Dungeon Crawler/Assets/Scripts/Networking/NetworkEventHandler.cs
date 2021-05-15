@@ -121,7 +121,6 @@ namespace DungeonCrawler.Networking
         /// <returns>The NetworkEvent, with parsed data</returns>
         private NetworkEvent ParseEvent(string text)
         {
-            Debug.Log(text);
             var command = text.Split(new string [] { "::" }, 2, StringSplitOptions.None)[0];
             var args = text.Substring(command.Length + 2);
             try 
@@ -132,6 +131,8 @@ namespace DungeonCrawler.Networking
                     "NewPlayer"  =>     new NewPlayer(args),
                     "NewMonster" =>     new NewMonster(args),
                     "PlayerLeft" =>     new PlayerLeft(args),
+                    "Hit"        =>     new Hit(args),
+                    "Miss"       =>     new Miss(args),
                     "Moved"      =>     new Moved(args),
                     _            =>     null
                 };
@@ -177,6 +178,14 @@ namespace DungeonCrawler.Networking
 
                 case PlayerLeft left: // On PlayerLeft, remove the Client's marker from the PlayerConnections
                     _actorGen.RemoveById(left.Model.Id); 
+                    break;
+
+                case Hit hit:
+                    _actorGen.HitOther(hit.Model.Id, hit.Model.Value.DefenderId);
+                    break;
+
+                case Miss miss:
+                    _actorGen.MissOther(miss.Model.Id, miss.Model.Value.DefenderId);
                     break;
             }
         }

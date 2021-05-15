@@ -1,8 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
-use rand::{RngCore, prelude::IteratorRandom, thread_rng};
+use crossbeam::channel::Sender;
+use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
-use crate::state::{actor::{Actor, ActorId}, traits::{AttackResult, Qualities}};
+use crate::state::{
+    actor::{Actor, ActorId},
+    traits::{AttackResult, Qualities},
+    types::ResponseType,
+};
 
 use super::{
     transform::{Direction, Transform},
@@ -15,14 +20,17 @@ pub struct WorldStage {
     actors: HashMap<u32, Actor>,
     paths: HashSet<Vec2>,
     filled_spots: HashSet<Vec2>,
+
+    s_to_event: Sender<ResponseType>,
 }
 
 impl WorldStage {
-    pub fn new(paths: HashSet<Vec2>) -> Self {
+    pub fn new(paths: HashSet<Vec2>, s_to_event: Sender<ResponseType>) -> Self {
         Self {
             actors: HashMap::new(),
             paths,
             filled_spots: HashSet::new(),
+            s_to_event,
         }
     }
     pub fn actor(&mut self, id: u32) -> Option<&mut Actor> {
@@ -47,11 +55,16 @@ impl WorldStage {
     pub fn remove(&mut self, id: u32) -> bool {
         self.actors.remove(&id).is_some()
     }
-    pub fn from_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
-        self.move_pos(id, new_t.pos);
-        if let Some(a) = self.actors.get_mut(&id) {
-            a.tr.dir = new_t.dir;
-            return Some(a.tr);
+    pub fn update_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
+        if !self.is_spot_open(new_t.pos) {
+            return None
+        }
+        if let Some(act) = self.actors.get_mut(&id) {
+            self.filled_spots.remove(&act.tr.pos);
+            self.filled_spots.insert(new_t.pos); 
+                
+            act.tr.dir = new_t.dir;
+            return Some(act.tr);
         }
         None
     }
@@ -62,21 +75,26 @@ impl WorldStage {
         self.actors.get(&id).map(|a| a.tr.dir)
     }
     pub fn move_pos(&mut self, id: u32, new_pos: Vec2) -> bool {
+        if !self.is_spot_open(new_pos) {
+            return false;
+        }
         if let Some(a) = self.actors.get_mut(&id) {
-            if !self.filled_spots.contains(&new_pos) && self.paths.contains(&new_pos) {
-                self.filled_spots.remove(&a.tr.pos);
-                self.filled_spots.insert(new_pos);
+            self.filled_spots.remove(&a.tr.pos);
+            self.filled_spots.insert(new_pos);
 
-                a.tr.dir = match new_pos.0 {
-                    p if p > a.tr.pos.0 => Direction::Right,
-                    p if p < a.tr.pos.0 => Direction::Left,
-                    _ => a.tr.dir,
-                };
+            a.tr.dir = match new_pos.0 {
+                p if p > a.tr.pos.0 => Direction::Right,
+                p if p < a.tr.pos.0 => Direction::Left,
+                _ => a.tr.dir,
+            };
 
-                a.tr.pos = new_pos;
+            a.tr.pos = new_pos;
 
-                return true;
-            }
+            self.s_to_event
+                .send(ResponseType::MonsterMoved(id, a.tr))
+                .unwrap();
+
+            return true; 
         }
 
         false
@@ -134,8 +152,7 @@ impl WorldStage {
                 .paths
                 .iter()
                 .filter(|path| {
-                    Vec2::distance(**path, a.tr.pos) <= range as f32
-                        && !self.filled_spots.contains(path)
+                    path.distance(a.tr.pos) <= range as f32 && !self.filled_spots.contains(path)
                 })
                 .choose(&mut thread_rng())
             {
@@ -145,7 +162,7 @@ impl WorldStage {
         None
     }
 
-    pub fn attk(&mut self, attk_id: u32, defd_id: u32) -> AttackResult {
+    pub fn attk(&mut self, attk_id: u32, defd_id: u32) {
         let attacker = &self.actors[&attk_id];
         let attk_damage = attacker.attrs.might as i32;
 
@@ -155,9 +172,13 @@ impl WorldStage {
             let health = &mut self.actors.get_mut(&defd_id).unwrap().stats().cur_health;
             *health -= attk_damage;
 
-            AttackResult::Hit(attk_id, *health)
+            self.s_to_event
+                .send(ResponseType::Hit(attk_id, defd_id, *health))
+                .unwrap();
         } else {
-            AttackResult::Miss(attk_id)
+            self.s_to_event
+                .send(ResponseType::Miss(attk_id, defd_id))
+                .unwrap();
         }
     }
 }

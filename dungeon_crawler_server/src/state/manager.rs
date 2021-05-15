@@ -113,6 +113,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                 .cloned()
                 .map(|s| Vec2(s.0, s.1))
                 .collect(),
+            s_to_event.clone(),
         );
         let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
 
@@ -160,9 +161,8 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                         players.remove(&id);
                     }
                     RequestType::PlayerMoved(id, new_t) => {
-                        world_stage.from_transform(id, new_t);
+                        world_stage.update_transform(id, new_t);
                     }
-
                     RequestType::SpawnMonster(id) => {
                         let monster = spawn_monster(id, &mut world_stage);
                         s_to_event

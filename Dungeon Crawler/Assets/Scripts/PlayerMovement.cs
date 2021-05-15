@@ -50,7 +50,7 @@ namespace DungeonCrawler.Monobehaviours
                 {
                     _timers[i].timer += Time.deltaTime
                         / (Input.GetKey(KeyCode.LeftShift) ? 4.0f : 1.0f);
-                    if(_timers[i].timer >= (keysDown <= 1 ? 0.1f : 0.2f)) 
+                    if(_timers[i].timer >= (keysDown <= 1 ? 0.1f : 0.14f)) 
                     {
                         newPos += _timers[i].direction;
                         _timers[i].timer = 0.0f;

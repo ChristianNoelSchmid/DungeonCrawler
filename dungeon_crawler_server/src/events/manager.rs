@@ -31,13 +31,11 @@ impl EventManager {
     /// This enables concurrent communication with the DatagramHandler.
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
-        let dun = Dungeon::new(100, 100);
+        let dun = Dungeon::new(10, 10);
         let state = StateManager::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
-        for i in 0..10 {
-            s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
-        }
+        s_to_state.send(RequestType::SpawnMonster(0)).unwrap();
 
         EventManager {
             r_from_client,
@@ -45,7 +43,7 @@ impl EventManager {
             s_to_state,
             r_from_state,
             addrs: HashMap::new(),
-            id_next: 10,
+            id_next: 1,
         }
     }
 
@@ -161,18 +159,22 @@ impl EventManager {
                 }
             }
             ResponseType::Hit(att_id, def_id, cur_health) => {
-                self.s_to_clients.send(SendPacket {
-                    addrs: self.all_addrs(),
-                    is_rel: false,
-                    msg: Type::Hit(att_id, def_id, cur_health).serialize(),
-                }).unwrap();
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: false,
+                        msg: Type::Hit(att_id, def_id, cur_health).serialize(),
+                    })
+                    .unwrap();
             }
             ResponseType::Miss(att_id, def_id) => {
-                self.s_to_clients.send(SendPacket {
-                    addrs: self.all_addrs(),
-                    is_rel: false,
-                    msg: Type::Miss(att_id, def_id).serialize(),
-                }).unwrap();
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: false,
+                        msg: Type::Miss(att_id, def_id).serialize(),
+                    })
+                    .unwrap();
             }
         }
     }

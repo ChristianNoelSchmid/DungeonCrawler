@@ -33,10 +33,12 @@ impl Serialize for Type {
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
             Type::PlayerLeft(id) => format!("PlayerLeft::{}", id),
-            Type::Hit(att_id, def_id, cur_health) => format!("Hit::{}::{}::{}", att_id, def_id, cur_health),
+            Type::Hit(att_id, def_id, cur_health) => {
+                format!("Hit::{}::{}::{}", att_id, def_id, cur_health)
+            }
             Type::Miss(att_id, def_id) => format!("Miss::{}::{}", att_id, def_id),
             Type::Dropped => "Drop".to_string(),
-         }
+        }
     }
 }
 

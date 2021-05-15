@@ -12,11 +12,12 @@ use crate::state::{
     transforms::{
         transform::{Direction, Transform},
         vec2::Vec2,
-        world_stage::WorldStage,
+        world_stage::{self, WorldStage},
     },
 };
 
 const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
+const MAX_RAD: f32 = PI / 2.0;
 
 ///
 /// A wrapper around (u32, u32), with cost
@@ -50,8 +51,8 @@ impl PartialOrd for Path {
 /// Requires a collection of `paths`, and a collection
 /// of the currently `filled_spots` on the `paths`.
 ///
-pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> Vec<Vec2> {
-    if !transformer.is_on_path(start) || !transformer.is_on_path(end) {
+pub fn find_shortest_path(world_stage: &WorldStage, start: Vec2, end: Vec2) -> Vec<Vec2> {
+    if !world_stage.is_on_path(start) || !world_stage.is_on_path(end) {
         return vec![start];
     }
 
@@ -86,9 +87,7 @@ pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> V
 
         for path in POS_TO_CONSIDER.iter() {
             let new_pos = u.pos + *path;
-            if transformer.is_spot_open(new_pos)
-                || (transformer.is_on_path(new_pos) && new_pos == end)
-            {
+            if world_stage.is_spot_open(new_pos) || new_pos == end {
                 let new_cost = dist_map[&u.pos] + 1;
 
                 if let Some(cost) = dist_map.get(&new_pos) {
@@ -105,7 +104,7 @@ pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> V
                 // two similar f32s converted to u32s
                 queue.push(Path {
                     pos: new_pos,
-                    cost: (new_cost as f32 + (Vec2::distance(new_pos, end)) * 1000.0) as u32,
+                    cost: (new_cost as f32 + (new_pos.distance(end)) * 1000.0) as u32,
                 });
             }
         }
@@ -115,12 +114,10 @@ pub fn find_shortest_path(transformer: &WorldStage, start: Vec2, end: Vec2) -> V
     if last_pos_cons != end {
         last_pos_cons = *dist_map
             .keys()
-            .min_by(|p, p2| {
-                Vec2::distance(**p, end)
-                    .partial_cmp(&Vec2::distance(**p2, end))
-                    .unwrap()
-            })
+            .min_by(|p, p2| p.distance(end).partial_cmp(&p2.distance(end)).unwrap())
             .unwrap();
+    } else if !world_stage.is_spot_open(end) {
+        shortest_path.pop();
     }
 
     while last_pos_cons != start {
@@ -150,9 +147,8 @@ pub fn visible_actors(
     while f <= end {
         i = 1.0;
         while i < sight_range as f32
-            && i <= sight_range as f32
-                * ((PI / 2.0 - ((f - begin).abs() - (f - end).abs())) / (PI / 2.0))
-                + 1.0
+            && i <= sight_range as f32 * (MAX_RAD - f32::min((begin - f).abs(), (end - f).abs()))
+                / MAX_RAD
         {
             let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);
             if !world_stage.is_on_path(spot) {
