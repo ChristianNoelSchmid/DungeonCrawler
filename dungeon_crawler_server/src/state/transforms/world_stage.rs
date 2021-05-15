@@ -5,7 +5,7 @@ use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
 use crate::state::{
     actor::{Actor, ActorId},
-    traits::{Qualities},
+    traits::Qualities,
     types::ResponseType,
 };
 
@@ -57,12 +57,12 @@ impl WorldStage {
     }
     pub fn update_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
         if !self.is_spot_open(new_t.pos) {
-            return None
+            return None;
         }
         if let Some(act) = self.actors.get_mut(&id) {
             self.filled_spots.remove(&act.tr.pos);
-            self.filled_spots.insert(new_t.pos); 
-            
+            self.filled_spots.insert(new_t.pos);
+
             act.tr = new_t;
             return Some(act.tr);
         }
@@ -94,7 +94,7 @@ impl WorldStage {
                 .send(ResponseType::MonsterMoved(id, a.tr))
                 .unwrap();
 
-            return true; 
+            return true;
         }
 
         false
@@ -105,6 +105,21 @@ impl WorldStage {
             return Some(a.tr);
         }
         None
+    }
+
+    pub fn look_at(&mut self, id: u32, pos: Vec2) -> bool {
+        if let Some(actor) = self.actors.get_mut(&id) {
+            let mut dir = actor.tr.dir;
+            if actor.tr.pos.0 < pos.0 {
+                dir = Direction::Right;
+            } else if actor.tr.pos.0 > pos.0 {
+                dir = Direction::Left;
+            }
+
+            actor.tr.dir = dir;
+            return true;
+        }
+        false
     }
 
     pub fn is_spot_open(&self, spot: Vec2) -> bool {

@@ -77,15 +77,13 @@ namespace DungeonCrawler.Monobehaviours
             if(_actorPositions.ContainsKey(attId) && _actorPositions.ContainsKey(defId))
             {
                 var dir = (_actorPositions[attId].Value - _actorPositions[defId].Value);
-                Debug.Log(dir);
                 StartCoroutine(AttackAnim(
                     attId, 
                     (dir.x, dir.y) switch 
                     {
-                        (0, 1) => 1,
-                        (0, -1) => 2,
-                        (-1, 0) => 3,
-                        _ => 4
+                        (0, -1) => 1,
+                        (0,  1) => 2,
+                        _ => 4,
                     }
                 ));
             }

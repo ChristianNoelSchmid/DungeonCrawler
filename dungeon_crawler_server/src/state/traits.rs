@@ -1,8 +1,8 @@
-use std::{collections::HashSet, time::Instant};
+use std::time::Instant;
 
 use super::{
     stats::{Attributes, Stats},
-    transforms::{vec2::Vec2, world_stage::WorldStage},
+    transforms::vec2::Vec2,
 };
 
 pub trait Identified {
@@ -25,15 +25,20 @@ pub trait Qualities {
     fn attrs(&self) -> &Attributes;
 }
 
-pub trait Combater {
-    fn combat_target(&self) -> Option<u32>;
+pub trait Follower {
+    fn follow_target(&self) -> Option<u32>;
 
-    fn start_combat_with(&mut self, id: u32);
-    fn stop_combat(&mut self);
+    fn start_following(&mut self, id: u32);
+    fn stop_following(&mut self);
     fn sight_range(&self) -> u32;
 
     fn last_sighting(&self) -> Instant;
     fn reset_last_sighting(&mut self);
+}
+
+pub trait Combater : Follower {
+    fn charge_attk(&mut self) -> bool;
+    fn reset_attk(&mut self);
 }
 
 pub enum AttackResult {

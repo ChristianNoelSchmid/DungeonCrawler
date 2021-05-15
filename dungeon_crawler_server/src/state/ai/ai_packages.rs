@@ -46,6 +46,7 @@ pub struct IndependentPackage<Entity: ?Sized> {
         entity: &mut Entity,
         s_to_event: &Sender<ResponseType>,
     ) -> AIPackageResult,
+
     ///
     /// The amount of time the `AIPackage` will run
     /// on the given Entity, assuming that `req` is

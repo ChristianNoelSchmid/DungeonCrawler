@@ -2,13 +2,13 @@ use std::time::Instant;
 
 use simple_serializer::Serialize;
 
-use crate::{
-    state::{
-        stats::{Attributes, Stats},
-        traits::{Combater, Identified, Translator, AI},
-        transforms::vec2::Vec2,
-    },
+use crate::state::{
+    stats::{Attributes, Stats},
+    traits::{Follower, Identified, Translator, AI},
+    transforms::vec2::Vec2,
 };
+
+use super::traits::Combater;
 
 ///
 /// Represents a particular monster type
@@ -31,10 +31,11 @@ pub struct Monster {
 pub struct MonsterInstance {
     pub template: &'static Monster,
     pub instance_id: u32,
-    pub path: Vec<Vec2>,
+    path: Vec<Vec2>,
 
-    pub combat_target: Option<u32>,
-    pub last_sighting: Instant,
+    combat_target: Option<u32>,
+    last_sighting: Instant,
+    charge_attk: u32,
 }
 
 impl MonsterInstance {
@@ -45,6 +46,7 @@ impl MonsterInstance {
             path: Vec::new(),
             combat_target: None,
             last_sighting: Instant::now(),
+            charge_attk: 0,
         }
     }
 }
@@ -67,14 +69,14 @@ impl Translator for MonsterInstance {
     }
 }
 
-impl Combater for MonsterInstance {
-    fn combat_target(&self) -> Option<u32> {
+impl Follower for MonsterInstance {
+    fn follow_target(&self) -> Option<u32> {
         self.combat_target
     }
-    fn start_combat_with(&mut self, id: u32) {
+    fn start_following(&mut self, id: u32) {
         self.combat_target = Some(id)
     }
-    fn stop_combat(&mut self) {
+    fn stop_following(&mut self) {
         self.combat_target = None;
     }
     fn sight_range(&self) -> u32 {
@@ -85,6 +87,21 @@ impl Combater for MonsterInstance {
     }
     fn reset_last_sighting(&mut self) {
         self.last_sighting = Instant::now();
+    }
+}
+
+impl Combater for MonsterInstance {
+    fn charge_attk(&mut self) -> bool {
+        self.charge_attk += 1;
+        if self.charge_attk >= 2 {
+            self.charge_attk = 0;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    fn reset_attk(&mut self) {
+        self.charge_attk = 0;
     }
 }
 

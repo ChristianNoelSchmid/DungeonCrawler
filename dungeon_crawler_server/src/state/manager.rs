@@ -118,10 +118,10 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
         let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
 
         loop {
-            if let Some(pl) = players.values().next() {
+            /*if let Some(pl) = players.values().next() {
                 println!("pl: {:?}", world_stage.actor(pl.id()).unwrap().tr);
                 println!("mn: {:?}", world_stage.actor(monsters.values().next().unwrap().id()).unwrap().tr);
-            }
+            }*/
             // RequestType Reception
             if let Ok(request) = r_at_state.try_recv() {
                 match request {
