@@ -31,11 +31,11 @@ impl EventManager {
     /// This enables concurrent communication with the DatagramHandler.
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
-        let dun = Dungeon::new(25, 25);
+        let dun = Dungeon::new(75, 75);
         let state = StateManager::new(dun);
         let (s_to_state, r_from_state) = state.get_sender_receiver();
 
-        for i in 0..1 {
+        for i in 0..10 {
             s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
         }
 
@@ -67,11 +67,9 @@ impl EventManager {
         }
     }
 
-    ///
     /// Parses a Datagram ReceivePacket `packet`, determining what needs
     /// to be accomplished on the server state, and what messages need to
     /// be sent back to the clients.
-    ///
     fn parse_client_packet(&mut self, packet: ReceivePacket) -> Vec<SendPacket> {
         match packet {
             ReceivePacket::DroppedClient(addr) => self.drop_client(addr),
@@ -79,11 +77,9 @@ impl EventManager {
         }
     }
 
-    ///
     /// Drops the supplied client `addr` from the EventHandler's
     /// system. Generally called via client request, or when
     /// the server's connection with the client has timed out
-    ///
     fn drop_client(&mut self, addr: SocketAddr) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
         if let Some(id) = self.addrs.remove(&addr) {
@@ -110,6 +106,7 @@ impl EventManager {
 
         match event {
             Type::Hello => {
+                println!("Received msg from {}", addr);
                 self.s_to_state
                     .send(RequestType::NewPlayer(addr, self.id_next))
                     .unwrap();
@@ -178,19 +175,33 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            ResponseType::Dead(id) => {
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: true,
+                        msg: Type::Dead(id).serialize(),
+                    })
+                    .unwrap();
+            }
+            ResponseType::Escaped(id) => {
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: true,
+                        msg: Type::Escaped(id).serialize(),
+                    })
+                    .unwrap();
+            }
         }
     }
 
-    ///
     /// Retrieve all `SocketAddr`s attached to the EventHandler
-    ///
     fn all_addrs(&self) -> Vec<SocketAddr> {
         self.addrs.clone().into_iter().map(|(k, _)| k).collect()
     }
-    ///
     /// Retrieve all `SocketAddr`'s attach to the EventHandler,
     /// exepct the `addr` provided.
-    ///
     fn all_addrs_but(&self, addr: SocketAddr) -> Vec<SocketAddr> {
         self.addrs
             .clone()
@@ -200,12 +211,10 @@ impl EventManager {
             .collect()
     }
 
-    ///
     /// A collections of UDP packets which give a joining `addr`
     /// all information relating to the current server state.
     /// Also prepares a message to all other clients informing them
     /// of the newcomer.
-    ///
     fn prepare_welcome_packet(&mut self, snapshot: StateSnapshot) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
 

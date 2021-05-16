@@ -1,9 +1,7 @@
 use std::time::{Duration, Instant};
 
-use crossbeam::channel::Sender;
 use rand::{thread_rng, RngCore};
-
-use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
+use crate::state::transforms::world_stage::WorldStage;
 
 use super::ai_packages::{AIPackageResult, IndependentPackage};
 
@@ -45,47 +43,57 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
     /// Requires the `world_stage` of the game, the `entity`
     /// being handled, and a `s_to_event Sender<ResponseType>`, to
     /// inform the `EventManager` of any changes in state.
-    pub fn run(
-        &mut self,
-        world_stage: &mut WorldStage,
-        entity: &mut Entity,
-        s_to_event: &Sender<ResponseType>,
-    ) {
+    pub fn run(&mut self, world_stage: &mut WorldStage, entity: &mut Entity) {
+        // If the package isn't expired
         if Instant::now() - self.start_time < self.chosen_dur {
+            // Ensure that a package is selected
             if let Some(selected) = self.selected {
-                if (self.packages[selected].step_next)(world_stage, entity, s_to_event)
+                // Finally, run the next step, and test if the method stopped the
+                // package. If not, return.
+                if (self.packages[selected].step_next)(world_stage, entity)
                     != AIPackageResult::Abort
                 {
                     return;
                 }
             }
         }
-        self.select_new_pkg(world_stage, entity, s_to_event);
+        // If any conditions above were not true, choose a new package
+        self.select_new_pkg(world_stage, entity);
     }
 
-    fn select_new_pkg(
-        &mut self,
-        world_stage: &mut WorldStage,
-        entity: &mut Entity,
-        s_to_event: &Sender<ResponseType>,
-    ) {
+    /// Selects a new `AIIndependentPackage` from the collectin of packages
+    /// the `IndependentManager` contains. Runs the inital script with the given
+    /// `world_stage`, `entity` and `s_to_event` `Sender`.
+    fn select_new_pkg(&mut self, world_stage: &mut WorldStage, entity: &mut Entity) {
+        // Filter the possible packages by testing if they pass the requirement method
         let packages = self
             .packages
             .iter()
             .filter(|p| (p.req)(world_stage, entity));
 
+        // Pick a random count based on all packages' pick counts.
+        // This will consume packages, since packages cannot be cloned (it would
+        // require cloning WorldStage)
         let mut count =
             ((thread_rng().next_u32() % packages.fold(0, |acc, x| acc + x.pick_count)) + 1) as i32;
 
+        // Enumerate through all packages, once again filtering by requirements
         for (index, package) in self.packages.iter().enumerate() {
             if (package.req)(world_stage, entity) {
+                // Subtract from count using each packages pick count.
+                // If count becomes <= 0, choose the current package to run
                 count -= package.pick_count as i32;
                 if count <= 0 {
                     let sel_pkg = self.packages[index as usize];
                     self.selected = Some(index as usize);
-                    (sel_pkg.on_start)(world_stage, entity, s_to_event);
+
+                    // Run the on start method for the package
+                    // And establish the start time
+                    (sel_pkg.on_start)(world_stage, entity);
                     self.start_time = Instant::now();
 
+                    // From the package interval range, create a random
+                    // amount of time the package will be run
                     let rnd_dur = (thread_rng().next_u64() as u128
                         % (sel_pkg.intv_range.1 - sel_pkg.intv_range.0).as_millis()
                         + sel_pkg.intv_range.0.as_millis())

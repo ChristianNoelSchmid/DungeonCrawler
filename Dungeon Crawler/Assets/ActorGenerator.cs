@@ -103,5 +103,17 @@ namespace DungeonCrawler.Monobehaviours
         {
             HitOther(attId, defId);
         }
+
+        public void KillActor(int id)
+        {
+            if (_actorPositions.ContainsKey(id))
+                _actorPositions[id].GetComponent<Animator>().SetTrigger("Dead");
+        }
+
+        public void EscapeActor(int id)
+        {
+            if (_actorPositions.ContainsKey(id))
+                _actorPositions[id].GetComponent<Animator>().SetTrigger("Escaped");
+        }
     }
 }

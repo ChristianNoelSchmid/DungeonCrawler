@@ -5,6 +5,13 @@ use super::{
     traits::Qualities,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Status {
+    Escaped,
+    Dead,
+    Active
+}
+
 #[derive(Debug, Clone)]
 pub struct Actor {
     pub stats: Stats,
@@ -12,6 +19,7 @@ pub struct Actor {
     pub id: u32,
     pub tr: Transform,
     pub actor_id: ActorId,
+    pub status: Status,
 }
 
 impl Actor {
@@ -22,6 +30,7 @@ impl Actor {
             attrs,
             tr,
             actor_id,
+            status: Status::Active,
         }
     }
 }

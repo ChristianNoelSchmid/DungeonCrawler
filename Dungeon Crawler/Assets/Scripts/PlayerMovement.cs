@@ -15,7 +15,9 @@ namespace DungeonCrawler.Monobehaviours
     }
 
     public class PlayerMovement : MonoBehaviour
-    { 
+    {
+        public static bool Disabled { get; set; } = false;
+
         private GridPosition _gridPosition;
         private MoveRepeatTimer [] _timers;
 
@@ -39,6 +41,8 @@ namespace DungeonCrawler.Monobehaviours
 
         private void Update()
         {
+            if (Disabled) return;
+
             int keysDown = _timers.Where(t => Input.GetKey(t.code)).ToArray().Length;
             var newPos = Vector2Int.zero;
             
@@ -59,6 +63,9 @@ namespace DungeonCrawler.Monobehaviours
                 else 
                     _timers[i].timer = 0.0f;
             }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+                GetComponent<Light>().Enabled = !GetComponent<Light>().Enabled;
 
             if(Obstacles.UpdateObstacle(_transform, _gridPosition.Value + newPos))
             {

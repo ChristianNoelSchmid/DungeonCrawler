@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use simple_serializer::Serialize;
 
@@ -30,12 +30,20 @@ pub struct Monster {
 #[derive(Clone)]
 pub struct MonsterInstance {
     pub template: &'static Monster,
-    pub instance_id: u32,
-    path: Vec<Vec2>,
 
-    combat_target: Option<u32>,
+    // Identified
+    pub instance_id: u32,
+
+    // Translator
+    path: Vec<Vec2>,
+    charge_step: Option<Instant>,
+
+    // Follower
+    follow_target: Option<u32>,
     last_sighting: Instant,
-    charge_attk: u32,
+
+    // Combator
+    charge_attk: Option<Instant>,
 }
 
 impl MonsterInstance {
@@ -44,9 +52,11 @@ impl MonsterInstance {
             template,
             instance_id,
             path: Vec::new(),
-            combat_target: None,
+            follow_target: None,
             last_sighting: Instant::now(),
-            charge_attk: 0,
+
+            charge_step: None,
+            charge_attk: None,
         }
     }
 }
@@ -67,17 +77,28 @@ impl Translator for MonsterInstance {
     fn next_step(&mut self) -> Option<Vec2> {
         self.path.pop()
     }
+    fn charge_step(&mut self) -> bool {
+        if let Some(step) = self.charge_step {
+            if Instant::now() - step > Duration::from_millis(200) {
+                self.charge_step = None;
+                return true;
+            }
+        } else {
+            self.charge_step = Some(Instant::now());
+        }
+        false
+    }
 }
 
 impl Follower for MonsterInstance {
     fn follow_target(&self) -> Option<u32> {
-        self.combat_target
+        self.follow_target
     }
     fn start_following(&mut self, id: u32) {
-        self.combat_target = Some(id)
+        self.follow_target = Some(id)
     }
     fn stop_following(&mut self) {
-        self.combat_target = None;
+        self.follow_target = None;
     }
     fn sight_range(&self) -> u32 {
         self.template.sight_range
@@ -92,16 +113,18 @@ impl Follower for MonsterInstance {
 
 impl Combater for MonsterInstance {
     fn charge_attk(&mut self) -> bool {
-        self.charge_attk += 1;
-        if self.charge_attk >= 2 {
-            self.charge_attk = 0;
-            return true;
+        if let Some(attk) = self.charge_attk {
+            if Instant::now() - attk > Duration::from_millis(500) {
+                self.charge_attk = None;
+                return true;
+            }
         } else {
-            return false;
+            self.charge_attk = Some(Instant::now());
         }
+        false
     }
     fn reset_attk(&mut self) {
-        self.charge_attk = 0;
+        self.charge_attk = None;
     }
 }
 

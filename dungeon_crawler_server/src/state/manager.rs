@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap};
 
 use crate::state::{
     ai::ai_package_collections::{IDLE, MELEE_COMBAT},
@@ -113,6 +113,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                 .cloned()
                 .map(|s| Vec2(s.0, s.1))
                 .collect(),
+            Vec2::from_tuple(dungeon.exit),
             s_to_event.clone(),
         );
         let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
@@ -165,7 +166,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                         players.remove(&id);
                     }
                     RequestType::PlayerMoved(id, new_t) => {
-                        world_stage.update_transform(id, new_t);
+                        world_stage.update_pl_tr(id, new_t);
                     }
                     RequestType::SpawnMonster(id) => {
                         let monster = spawn_monster(id, &mut world_stage);
@@ -191,9 +192,10 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                 ai_managers
                     .get_mut(&index)
                     .unwrap()
-                    .run(&mut world_stage, monster, &s_to_event);
+                    .run(&mut world_stage, monster);
             }
-            std::thread::sleep(Duration::from_millis(200));
+
+            std::thread::yield_now();
         }
     });
 

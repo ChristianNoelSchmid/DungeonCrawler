@@ -30,6 +30,10 @@ namespace DungeonCrawler.Networking
 
         [SerializeField]
         private GridPosition _playerPosition;
+
+        [SerializeField]
+        private UIStatBar _playerHeathBar;
+
         private Vector2Int _prevPlayerPosition;
 
         private const float _playerUpdateIntevalSeconds = 0.1f;
@@ -134,7 +138,9 @@ namespace DungeonCrawler.Networking
                     "Hit"        =>     new Hit(args),
                     "Miss"       =>     new Miss(args),
                     "Moved"      =>     new Moved(args),
-                    _            =>     null
+                    "Dead"       =>     new Dead(args),
+                    "Escaped"    =>     new Escaped(args),
+                    _            =>     null,
                 };
             }
             catch(Exception) { return null; }
@@ -183,12 +189,25 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case Hit hit:
-                    Debug.Log("Hit! pl health left: " + hit.Model.Value.HealthLeft.ToString());
                     _actorGen.HitOther(hit.Model.Id, hit.Model.Value.DefenderId);
+                    if(hit.Model.Value.DefenderId == _playerId)
+                        _playerHeathBar.SetHealth(hit.Model.Value.HealthLeft);
                     break;
 
                 case Miss miss:
                     _actorGen.MissOther(miss.Model.Id, miss.Model.Value.DefenderId);
+                    break;
+
+                case Dead dead:
+                    _actorGen.KillActor(dead.Model.Id);
+                    if (dead.Model.Id == _playerId)
+                        PlayerMovement.Disabled = true;
+                    break;
+
+                case Escaped escaped:
+                    _actorGen.EscapeActor(escaped.Model.Id);
+                    if (escaped.Model.Id == _playerId)
+                        PlayerMovement.Disabled = true;
                     break;
             }
         }

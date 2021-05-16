@@ -21,4 +21,6 @@ pub enum ResponseType {
     MonsterMoved(u32, Transform),
     Hit(u32, u32, i32),
     Miss(u32, u32),
+    Dead(u32),
+    Escaped(u32),
 }

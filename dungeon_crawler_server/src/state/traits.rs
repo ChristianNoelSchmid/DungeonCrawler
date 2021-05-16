@@ -14,6 +14,7 @@ pub trait Identified {
 /// Required `Directed` (and with it, `Positioned`)
 ///
 pub trait Translator: Identified {
+    fn charge_step(&mut self) -> bool;
     fn target(&self) -> Option<&Vec2>;
     fn set_path(&mut self, target: Vec<Vec2>);
 
@@ -36,7 +37,7 @@ pub trait Follower {
     fn reset_last_sighting(&mut self);
 }
 
-pub trait Combater : Follower {
+pub trait Combater: Follower {
     fn charge_attk(&mut self) -> bool;
     fn reset_attk(&mut self);
 }

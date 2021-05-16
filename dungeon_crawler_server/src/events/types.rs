@@ -16,6 +16,8 @@ pub enum Type {
     PlayerLeft(u32),              // id
     Hit(u32, u32, i32),
     Miss(u32, u32),
+    Dead(u32),
+    Escaped(u32),
     Dropped,
 }
 
@@ -37,6 +39,8 @@ impl Serialize for Type {
                 format!("Hit::{}::{}::{}", att_id, def_id, cur_health)
             }
             Type::Miss(att_id, def_id) => format!("Miss::{}::{}", att_id, def_id),
+            Type::Dead(id) => format!("Dead::{}", id),
+            Type::Escaped(id) => format!("Escaped::{}", id),
             Type::Dropped => "Drop".to_string(),
         }
     }

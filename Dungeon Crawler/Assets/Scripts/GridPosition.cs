@@ -35,6 +35,11 @@ namespace DungeonCrawler.Monobehaviours
 
         private void Awake() => _transform = transform;
 
+        public void OnLeave()
+        {
+            GetComponent<Light>().Enabled = false;
+        }
+
         public PositionModel ToPositionModel() => new PositionModel
         {
             X = Value.x,

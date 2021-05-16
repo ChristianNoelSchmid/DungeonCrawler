@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -15,6 +14,9 @@ namespace DungeonCrawler.Monobehaviours
 
         [SerializeField]
         private Voxel _floorTemplate;
+
+        [SerializeField]
+        private GameObject _trapdoor;
 
         [SerializeField]
         private LightGenerator _lightGenerator;
@@ -69,6 +71,7 @@ namespace DungeonCrawler.Monobehaviours
                 }
             }
 
+            _trapdoor.GetComponent<GridPosition>().Value = _dungeon.Exit;
             _lightGenerator.ImportDungeon(_voxels);
         }
     }

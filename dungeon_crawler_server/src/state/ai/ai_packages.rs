@@ -5,11 +5,8 @@
 //! Christian Schmid - May, 2021
 //!
 
+use crate::state::transforms::world_stage::WorldStage;
 use std::time::Duration;
-
-use crossbeam::channel::Sender;
-
-use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum AIPackageResult {
@@ -37,15 +34,11 @@ pub struct IndependentPackage<Entity: ?Sized> {
     /// Method that runs upon the `AIPackage`
     /// starting. Initial actions of the `Entity`.
     ///
-    pub on_start: fn(&mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>),
+    pub on_start: fn(&mut WorldStage, entity: &mut Entity),
     ///
     /// An increment in the `Entity`'s AI system
     ///
-    pub step_next: fn(
-        &mut WorldStage,
-        entity: &mut Entity,
-        s_to_event: &Sender<ResponseType>,
-    ) -> AIPackageResult,
+    pub step_next: fn(&mut WorldStage, entity: &mut Entity) -> AIPackageResult,
 
     ///
     /// The amount of time the `AIPackage` will run

@@ -1,13 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use crossbeam::channel::Sender;
+use crossbeam::{channel::Sender, epoch::Pointable};
 use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
-use crate::state::{
-    actor::{Actor, ActorId},
-    traits::Qualities,
-    types::ResponseType,
-};
+use crate::state::{actor::{Actor, ActorId, Status}, traits::Qualities, types::ResponseType};
 
 use super::{
     transform::{Direction, Transform},
@@ -19,16 +15,18 @@ use super::{
 pub struct WorldStage {
     actors: HashMap<u32, Actor>,
     paths: HashSet<Vec2>,
+    exit: Vec2,
     filled_spots: HashSet<Vec2>,
 
     s_to_event: Sender<ResponseType>,
 }
 
 impl WorldStage {
-    pub fn new(paths: HashSet<Vec2>, s_to_event: Sender<ResponseType>) -> Self {
+    pub fn new(paths: HashSet<Vec2>, exit: Vec2, s_to_event: Sender<ResponseType>) -> Self {
         Self {
             actors: HashMap::new(),
             paths,
+            exit,
             filled_spots: HashSet::new(),
             s_to_event,
         }
@@ -55,7 +53,7 @@ impl WorldStage {
     pub fn remove(&mut self, id: u32) -> bool {
         self.actors.remove(&id).is_some()
     }
-    pub fn update_transform(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
+    pub fn update_pl_tr(&mut self, id: u32, new_t: Transform) -> Option<Transform> {
         if !self.is_spot_open(new_t.pos) {
             return None;
         }
@@ -64,6 +62,13 @@ impl WorldStage {
             self.filled_spots.insert(new_t.pos);
 
             act.tr = new_t;
+
+            if act.tr.pos == self.exit {
+                act.status = Status::Escaped;
+                self.filled_spots.remove(&act.tr.pos);
+                self.s_to_event.send(ResponseType::Escaped(act.id)).unwrap();
+            }
+
             return Some(act.tr);
         }
         None
@@ -129,7 +134,7 @@ impl WorldStage {
     pub fn is_actor_id_on_spot(&self, actor_id: ActorId, spot: Vec2) -> Option<&Actor> {
         self.actors
             .values()
-            .find(|a| a.actor_id == actor_id && a.tr.pos == spot)
+            .find(|a| a.actor_id == actor_id && a.tr.pos == spot && a.status == Status::Active)
     }
 
     pub fn is_on_path(&self, spot: Vec2) -> bool {
@@ -137,7 +142,7 @@ impl WorldStage {
     }
 
     pub fn is_actor_on_spot(&self, id: u32, spot: Vec2) -> bool {
-        self.actors[&id].tr.pos == spot
+        self.actors[&id].tr.pos == spot && self.actors[&id].status == Status::Active
     }
 
     ///
@@ -181,14 +186,19 @@ impl WorldStage {
         let attacker = &self.actors[&attk_id];
         let attk_damage = attacker.attrs.might as i32;
 
-        let defender = &self.actors[&defd_id];
+        let defender = &mut self.actors.get_mut(&defd_id).unwrap();
 
         if thread_rng().next_u32() % 100 > defender.attrs().fines {
-            let health = &mut self.actors.get_mut(&defd_id).unwrap().stats().cur_health;
+            let health = &mut defender.stats().cur_health;
             *health -= attk_damage;
 
+            if *health <= 0 {
+                defender.status = Status::Dead;
+                self.filled_spots.remove(&defender.tr.pos);
+                self.s_to_event.send(ResponseType::Dead(defd_id)).unwrap();
+            }
             self.s_to_event
-                .send(ResponseType::Hit(attk_id, defd_id, *health))
+                .send(ResponseType::Hit(attk_id, defd_id, defender.stats().cur_health))
                 .unwrap();
         } else {
             self.s_to_event
