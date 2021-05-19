@@ -7,6 +7,7 @@ using UnityEngine;
 using DungeonCrawler.Models;
 using DungeonCrawler.Networking.NetworkEvents;
 using DungeonCrawler.Monobehaviours;
+using System.Threading;
 
 namespace DungeonCrawler.Networking
 {
@@ -19,8 +20,7 @@ namespace DungeonCrawler.Networking
         private NetworkDatagramHandler _datagramHandler;
         private WaitForSeconds _waitForInterval;
 
-        [SerializeField]
-        private bool _networkingEnabled = true;
+        private bool _networkingEnabled = false;
 
         [SerializeField]
         private DungeonGenerator _dungeonGen;
@@ -32,19 +32,24 @@ namespace DungeonCrawler.Networking
         private GridPosition _playerPosition;
 
         [SerializeField]
-        private UIStatBar _playerHeathBar;
+        private UIWatchPane _watchPane;
+        [SerializeField]
+        private UIResultsPane _resultsPane;
+        [SerializeField]
+        private UIStatBar _statBar;
 
         private Vector2Int _prevPlayerPosition;
 
         private const float _playerUpdateIntevalSeconds = 0.1f;
 
         private int _playerId;
+        private string _playerName;
         private Queue<DatagramCallback> _callbackQueue;
+
+        private Thread _pingThread;
 
         private void Awake()
         {
-            if(!_networkingEnabled) return;
-
             _waitForInterval = new WaitForSeconds(_playerUpdateIntevalSeconds);
             _datagramHandler = GetComponent<NetworkDatagramHandler>();
 
@@ -59,35 +64,44 @@ namespace DungeonCrawler.Networking
         /// <summary>
         /// Begins the handler, sending the first PlayerJoined message
         /// </summary>
-        public void StartHandler()
+        public void StartHandler(string name)
         {
-            if(!_networkingEnabled) return;             
+            _playerName = name;
+            _networkingEnabled = true;
             _datagramHandler.SendDatagram(
-                new Hello().CreateString(),
+                new Hello { Player = new Player { Name = _playerName } }.CreateString(),
                 true
             );
+            _pingThread = new Thread(BeginPinging) { IsBackground = true };
+            _pingThread.Start();
+            StartCoroutine(BeginUpdatingMovement());
         }
 
         private void Update()
         {
             if(!_networkingEnabled) return;
-            var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            var mousePosInt = new Vector2Int(Mathf.RoundToInt(mousePos.x), Mathf.RoundToInt(mousePos.y));
-
-            if(Input.GetMouseButtonDown(0)) {
-                _datagramHandler.SendDatagram(new RequestMove { Model = mousePosInt }.CreateString(), false);
-            }
 
             // If there is an event in the queue, call it
             while(_callbackQueue.Count > 0)
                 TransferEvent(_callbackQueue.Dequeue());
         }
 
+        private void BeginPinging()
+        {
+            while(true)
+            {
+                _datagramHandler.SendDatagram(
+                    Datagrams.Ping.CreateString(),
+                    false
+                );
+                Thread.Sleep(1000);
+            }
+        }
+
         // Periodically sends ping information to the Server, 
         // with the local Player's GridPosition
-        private IEnumerator BeginPinging()
+        private IEnumerator BeginUpdatingMovement()
         {
-            var count = 0;
             while(true)
             {
                 if(_prevPlayerPosition != _playerPosition.Value)
@@ -105,14 +119,6 @@ namespace DungeonCrawler.Networking
                     );
                     _prevPlayerPosition = _playerPosition.Value;
                 }
-                ++count;
-                if (count % 10 == 0)
-                {
-                    _datagramHandler.SendDatagram(
-                        Datagrams.Ping.CreateString(),
-                        false
-                    );
-                }
                 yield return _waitForInterval;
             }
         }
@@ -127,20 +133,23 @@ namespace DungeonCrawler.Networking
         {
             var command = text.Split(new string [] { "::" }, 2, StringSplitOptions.None)[0];
             var args = text.Substring(command.Length + 2);
+            Debug.Log(text);
             try 
             {
                 return command switch
                 {
-                    "Welcome"    =>     new Welcome(args),
-                    "NewPlayer"  =>     new NewPlayer(args),
-                    "NewMonster" =>     new NewMonster(args),
-                    "PlayerLeft" =>     new PlayerLeft(args),
-                    "Hit"        =>     new Hit(args),
-                    "Miss"       =>     new Miss(args),
-                    "Moved"      =>     new Moved(args),
-                    "Dead"       =>     new Dead(args),
-                    "Escaped"    =>     new Escaped(args),
-                    _            =>     null,
+                    "Welcome"    =>      new Welcome(args),
+                    "NewPlayer"  =>      new NewPlayer(args),
+                    "NewMonster" =>      new NewMonster(args),
+                    "PlayerLeft" =>      new PlayerLeft(args),
+                    "Hit"        =>      new Hit(args),
+                    "Miss"       =>      new Miss(args),
+                    "Moved"      =>      new Moved(args),
+                    "Dead"       =>      new Dead(args),
+                    "Escaped"    =>      new Escaped(args),
+                    "DungeonComplete" => new DungeonComplete(),
+                    "Reconnect" =>       new Reconnect(),
+                    _            =>      null,
                 };
             }
             catch(Exception) { return null; }
@@ -162,9 +171,14 @@ namespace DungeonCrawler.Networking
                     _playerPosition.Value = _dungeonGen.Dungeon.Entrance;
                     _playerId = welcome.Model.Id;
 
-                    _actorGen.AddClientPlayer(_playerPosition, _playerId);
+                    _actorGen.AddClientPlayer(_playerPosition, _playerName, _playerId);
 
-                    StartCoroutine(BeginPinging());
+                    PlayerMovement.Disabled = false;
+                    _watchPane.SetVisible(false);
+                    _resultsPane.SetVisible(false);
+                    _statBar.SetHealth(10);
+                    _playerPosition.GetComponent<ActorStatus>().Status = Assets.Scripts.Models.Status.Active;
+
                     break;
                 
                 case NewPlayer newPlayer:
@@ -173,7 +187,6 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case NewMonster newMonster:
-
                     _actorGen.SpawnMonster(newMonster.Model);
                     break;
 
@@ -191,7 +204,7 @@ namespace DungeonCrawler.Networking
                 case Hit hit:
                     _actorGen.HitOther(hit.Model.Id, hit.Model.Value.DefenderId);
                     if(hit.Model.Value.DefenderId == _playerId)
-                        _playerHeathBar.SetHealth(hit.Model.Value.HealthLeft);
+                        _statBar.SetHealth(hit.Model.Value.HealthLeft);
                     break;
 
                 case Miss miss:
@@ -201,15 +214,42 @@ namespace DungeonCrawler.Networking
                 case Dead dead:
                     _actorGen.KillActor(dead.Model.Id);
                     if (dead.Model.Id == _playerId)
+                    {
                         PlayerMovement.Disabled = true;
+                        _watchPane.OnStatusChange(true);
+                        _watchPane.SetVisible(true);
+                    }
                     break;
 
                 case Escaped escaped:
                     _actorGen.EscapeActor(escaped.Model.Id);
                     if (escaped.Model.Id == _playerId)
+                    {
                         PlayerMovement.Disabled = true;
+                        _watchPane.OnStatusChange(false);
+                        _watchPane.SetVisible(true);
+                    }
+                    break;
+
+                case DungeonComplete _:
+                    _watchPane.SetVisible(false);
+                    _resultsPane.SetVisible(true);
+                    break;
+
+                case Reconnect _:
+
+                    _actorGen.ResetAll();
+                    _datagramHandler.SendDatagram(
+                        new Hello { Player = new Player { Name = _playerName } }.CreateString(),
+                        true
+                    );
                     break;
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            _pingThread.Abort();
         }
     }
 }

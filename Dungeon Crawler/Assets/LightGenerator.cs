@@ -10,7 +10,7 @@ namespace DungeonCrawler.Monobehaviours
 {
     public class LightGenerator : MonoBehaviour
     {
-        private Dictionary<Vector2Int, Dictionary<Light, float>> _lightValues;
+        private Dictionary<Vector2Int, Dictionary<ActorLight, float>> _lightValues;
         private Dictionary<Vector2Int, Voxel> _voxels;
         private Dictionary<Vector2Int, float> _lightUpdates;
 
@@ -19,7 +19,9 @@ namespace DungeonCrawler.Monobehaviours
 
         public void ImportDungeon(IEnumerable<Voxel> voxels)
         {
-            _lightValues = new Dictionary<Vector2Int, Dictionary<Light, float>>();
+            StopAllCoroutines();
+
+            _lightValues = new Dictionary<Vector2Int, Dictionary<ActorLight, float>>();
             _voxels = new Dictionary<Vector2Int, Voxel>();
             _lightUpdates = new Dictionary<Vector2Int, float>();
 
@@ -31,13 +33,13 @@ namespace DungeonCrawler.Monobehaviours
 
                 _voxels.Add(pos, voxel);
                 voxel.Renderer.color = Color.black;
-                _lightValues.Add(pos, new Dictionary<Light, float>());
+                _lightValues.Add(pos, new Dictionary<ActorLight, float>());
             }
 
             _initialized = true;
         }
 
-        public void UpdateLight(DungeonCrawler.Monobehaviours.Light light)
+        public void UpdateLight(DungeonCrawler.Monobehaviours.ActorLight light)
         {
             if(!_initialized) return;
 

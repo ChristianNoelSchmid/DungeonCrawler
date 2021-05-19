@@ -25,7 +25,8 @@ namespace DungeonCrawler.Monobehaviours
                 {
                     float x = _direction switch {
                         Direction.Right => 1.0f,
-                        Direction.Left => -1.0f
+                        Direction.Left => -1.0f,
+                        _ => 1.0f,
                     };
 
                     _transform.localScale = new Vector3(x, 1.0f, 1.0f);
@@ -34,12 +35,7 @@ namespace DungeonCrawler.Monobehaviours
         }
 
         private void Awake() => _transform = transform;
-
-        public void OnLeave()
-        {
-            GetComponent<Light>().Enabled = false;
-        }
-
+        
         public PositionModel ToPositionModel() => new PositionModel
         {
             X = Value.x,

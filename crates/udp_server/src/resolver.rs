@@ -45,7 +45,6 @@ impl AckHandler {
 
                     self.timeouts.insert(addr, timeout_secs);
                     pop_back = true;
-                    println!("accepted ack {}", index);
                 }
             }
             if pop_back {
@@ -70,7 +69,6 @@ impl AckHandler {
         if !self.next_to.contains_key(&addr) {
             next_to_index = 0;
             self.next_to.insert(addr, 1);
-            self.next_from.insert(addr, 0);
             self.resolvers.insert(addr, VecDeque::new());
         } else {
             next_to_index = self.next_to[&addr];

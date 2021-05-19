@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use rand::{thread_rng, RngCore};
 use crate::state::transforms::world_stage::WorldStage;
+use rand::{thread_rng, RngCore};
 
 use super::ai_packages::{AIPackageResult, IndependentPackage};
 

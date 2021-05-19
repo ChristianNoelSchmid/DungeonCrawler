@@ -65,7 +65,7 @@ namespace DungeonCrawler.Monobehaviours
             }
 
             if (Input.GetKeyDown(KeyCode.Space))
-                GetComponent<Light>().Enabled = !GetComponent<Light>().Enabled;
+                GetComponent<ActorLight>().Enabled = !GetComponent<ActorLight>().Enabled;
 
             if(Obstacles.UpdateObstacle(_transform, _gridPosition.Value + newPos))
             {

@@ -1,3 +1,5 @@
+use simple_serializer::Serialize;
+
 use crate::state::transforms::transform::Transform;
 
 use super::{
@@ -5,11 +7,22 @@ use super::{
     traits::Qualities,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
-    Escaped,
+    Active,
     Dead,
-    Active
+    Escaped,
+}
+
+impl Serialize for Status {
+    type SerializeTo = String;
+    fn serialize(&self) -> Self::SerializeTo {
+        format!("{}", match self {
+            Status::Active=> 0,
+            Status::Dead => 1,
+            Status::Escaped => 2,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -181,7 +181,9 @@ impl DatagramHandler {
                 // Convert the buffer into a string, and parse the
                 // string as a DatagramType
                 let buf = &buf[..amt];
-                let datagram = Type::deserialize(&String::from_utf8(buf.to_vec()).unwrap());
+                let msg = String::from_utf8(buf.to_vec()).unwrap();
+                let datagram = Type::deserialize(&String::from(msg));
+                println!("{:?}", datagram);
 
                 client_ping_times.insert(addr, Instant::now());
 
@@ -194,6 +196,7 @@ impl DatagramHandler {
                     // to determine if they are in order. If not, request a resend.
                     Type::Rel(ack_index, data) => {
                         let rel_result = ack_resolver.check_rel(addr, ack_index);
+
                         if rel_result == RelResult::NewRel {
                             s.send(ClientMessage(addr, data)).unwrap()
                         }

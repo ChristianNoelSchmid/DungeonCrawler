@@ -45,7 +45,7 @@ namespace DungeonCrawler.Monobehaviours
             {
                 foreach(var voxel in _voxels)
                 {
-                    Destroy(voxel);
+                    Destroy(voxel.gameObject);
                     Obstacles.RemoveObstacle(voxel.transform);
                 }
             }

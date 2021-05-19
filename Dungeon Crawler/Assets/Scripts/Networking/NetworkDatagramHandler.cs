@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using DungeonCrawler.Networking.Datagrams;
 using UnityEngine;
-using DungeonCrawler.Networking.NetworkEvents;
 
 namespace DungeonCrawler.Networking
 {
@@ -34,11 +33,9 @@ namespace DungeonCrawler.Networking
         private NetworkEventHandler _eventHandler;
 
         [SerializeField]
-        private GameObject _disconnectObject;
+        private UIDisconnectPanel _disconnectPanel;
         private bool _disconnected = false; // Set to true to allow disconnectObject to show on main thread
-
-        private bool _connected = false;
-
+ 
         /// <summary>
         /// Length of ticks for a packet timeout
         /// </summary>
@@ -81,7 +78,7 @@ namespace DungeonCrawler.Networking
         private ulong _ackCurrentIndex;
 
         public EventHandler<DatagramCallback> MessageRecieved;
-        public bool IsListening { get; set; } = true;
+        public bool IsListening { get; set; } = false;
 
         /// <summary>
         /// Creates the NetworkDatagramHandler. This can be either a client
@@ -96,24 +93,20 @@ namespace DungeonCrawler.Networking
             _resolverBuffer = new List<AckResolver>();
             _ackExpectedIndex = 0;
             _ackCurrentIndex = 0;
-            _disconnectObject.SetActive(false);
 
             // Start the AckResolver, and Listening Thread
             _resolverThread = new Thread(StartAckResolver){ IsBackground = true };
         }
 
-        private void Start()
-        {
-            StartHandler("127.0.0.1");
-        }
-
         private void Update()
         {
-            if (_disconnected && !_disconnectObject.activeSelf)
-                _disconnectObject.SetActive(true);
+            if (_disconnected && !_disconnectPanel.IsVisible)
+                _disconnectPanel.SetVisible(true);
         }
 
-        public bool StartHandler(string ip)
+        public bool AttemptSignin(string name, string ipAddr) => StartHandler(name, ipAddr);
+
+        private bool StartHandler(string name, string ip)
         {
             try
             {
@@ -129,8 +122,9 @@ namespace DungeonCrawler.Networking
                 return false;        
             }
 
+            IsListening = true;
             _resolverThread.Start();
-            _eventHandler.StartHandler();
+            _eventHandler.StartHandler(name);
 
             return true;
         }
@@ -265,7 +259,6 @@ namespace DungeonCrawler.Networking
         private Datagram ParseDatagram(byte[] datagram)
         {
             string msg = Encoding.ASCII.GetString(datagram).Trim();
-
             try
             {
                 switch(msg)

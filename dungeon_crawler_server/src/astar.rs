@@ -128,6 +128,10 @@ pub fn find_shortest_path(world_stage: &WorldStage, start: Vec2, end: Vec2) -> V
     shortest_path
 }
 
+/// Determines which Actors (via) `actor_ids` are
+/// visible in the entity's current field of view,
+/// via their transform `tr`, by specified `world_stage`
+/// position and `sight_range`
 pub fn visible_actors(
     world_stage: &mut WorldStage,
     tr: Transform,

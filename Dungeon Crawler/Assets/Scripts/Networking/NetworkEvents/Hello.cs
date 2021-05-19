@@ -1,7 +1,10 @@
+using DungeonCrawler.Models;
+
 namespace DungeonCrawler.Networking.NetworkEvents
 {
     public class Hello : NetworkEvent
     {
-        public string CreateString() => "Hello";
+        public Player Player { get; set; }
+        public string CreateString() => $"Hello::{Player.Name}";
     }
 }

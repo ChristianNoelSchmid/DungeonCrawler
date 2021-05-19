@@ -2,6 +2,8 @@ using System;
 using UnityEngine;
 
 using DungeonCrawler.Models;
+using DungeonCrawler.Monobehaviours;
+using Assets.Scripts.Models;
 
 namespace DungeonCrawler.Networking.NetworkEvents 
 {
@@ -20,6 +22,7 @@ namespace DungeonCrawler.Networking.NetworkEvents
             {
                 Id = int.Parse(args[0]),
                 Name = args[1].Trim(),
+                Status = (Status)int.Parse(args[2]),
             };
         }
         public string CreateString() => $"";

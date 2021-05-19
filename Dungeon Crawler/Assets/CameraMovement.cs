@@ -9,6 +9,11 @@ public class CameraMovement : MonoBehaviour
 
     [SerializeField]
     private Transform _target; 
+    public Transform Target
+    {
+        get => _target;
+        set => _target = value;
+    }
 
     private Transform _transform;
     void Awake() => _transform = transform; 

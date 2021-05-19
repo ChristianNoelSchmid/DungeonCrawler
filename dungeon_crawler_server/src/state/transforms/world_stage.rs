@@ -1,9 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
-use crossbeam::{channel::Sender, epoch::Pointable};
+use crossbeam::channel::Sender;
 use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
-use crate::state::{actor::{Actor, ActorId, Status}, traits::Qualities, types::ResponseType};
+use crate::state::{
+    actor::{Actor, ActorId, Status},
+    traits::Qualities,
+    types::ResponseType,
+};
 
 use super::{
     transform::{Direction, Transform},
@@ -30,6 +34,13 @@ impl WorldStage {
             filled_spots: HashSet::new(),
             s_to_event,
         }
+    }
+    pub fn reset_dun(&mut self, paths: HashSet<Vec2>, exit: Vec2) {
+        self.actors.clear();
+        self.filled_spots.clear();
+
+        self.paths = paths;
+        self.exit = exit;
     }
     pub fn actor(&mut self, id: u32) -> Option<&mut Actor> {
         self.actors.get_mut(&id)
@@ -198,7 +209,11 @@ impl WorldStage {
                 self.s_to_event.send(ResponseType::Dead(defd_id)).unwrap();
             }
             self.s_to_event
-                .send(ResponseType::Hit(attk_id, defd_id, defender.stats().cur_health))
+                .send(ResponseType::Hit(
+                    attk_id,
+                    defd_id,
+                    defender.stats().cur_health,
+                ))
                 .unwrap();
         } else {
             self.s_to_event

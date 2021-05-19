@@ -4,12 +4,13 @@ using DungeonCrawler.Monobehaviours;
 
 namespace DungeonCrawler.Monobehaviours
 {
-    public class Light : MonoBehaviour
+    public class ActorLight : MonoBehaviour
     {
         private static LightGenerator _generator;
 
         [SerializeField]
         private int _range;
+
         [SerializeField]
         private float _intensity;
 
@@ -18,7 +19,7 @@ namespace DungeonCrawler.Monobehaviours
         public int Range { get => _range; set => _range = value; }
         public float Intensity => _currentIntensity;
 
-        private bool _enabled;
+        private bool _enabled = true;
         public bool Enabled
         {
             get => _enabled;
@@ -41,6 +42,11 @@ namespace DungeonCrawler.Monobehaviours
                 _generator = FindObjectOfType<LightGenerator>();
             _position = GetComponent<GridPosition>();
             _currentIntensity = _intensity;
+        }
+
+        private void Start()
+        {
+            Enabled = true;
         }
 
         private void Update()

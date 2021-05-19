@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::state::{
     ai::ai_package_collections::{IDLE, MELEE_COMBAT},
@@ -7,9 +7,10 @@ use crate::state::{
 use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
+use simple_serializer::Serialize;
 
 use super::{
-    actor::{Actor, ActorId},
+    actor::{Actor, ActorId, Status},
     ai::ai_package_manager::IndependentManager,
     monsters::{Monster, MonsterInstance},
     players::Player,
@@ -103,7 +104,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
     let (s_to_event, r_at_event) = crossbeam::channel::unbounded();
 
-    std::thread::spawn(move || -> ! {
+    std::thread::spawn(move || {
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
         let mut players = HashMap::<u32, Player>::new();
         let mut world_stage = WorldStage::new(
@@ -126,8 +127,8 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
             // RequestType Reception
             if let Ok(request) = r_at_state.try_recv() {
                 match request {
-                    RequestType::NewPlayer(addr, id) => {
-                        players.insert(id, Player::new(id, "".to_string()));
+                    RequestType::NewPlayer(addr, id, name) => {
+                        players.insert(id, Player::new(id, name.clone()));
                         world_stage.add(
                             id,
                             Actor::new(
@@ -144,12 +145,19 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                         s_to_event
                             .send(ResponseType::StateSnapshot(StateSnapshot {
                                 addr_for: addr,
-                                new_player: (id, "".to_string(), world_stage.pos(id).unwrap()),
+                                new_player: (id, name, world_stage.pos(id).unwrap()),
                                 other_players: players
                                     .values()
                                     .filter(|p| p.id != id)
                                     .cloned()
-                                    .map(|p| (p.id, p.name.clone(), world_stage.pos(p.id).unwrap()))
+                                    .map(|p| {
+                                        (
+                                            p.id,
+                                            p.name.clone(),
+                                            world_stage.pos(p.id).unwrap(),
+                                            world_stage.actor(p.id).unwrap().status.serialize(),
+                                        )
+                                    })
                                     .collect(),
                                 monsters: monsters
                                     .values()
@@ -184,7 +192,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                         );
                         monsters.insert(world_stage.pos(monster.id()).unwrap(), monster);
                     }
-                    _ => {}
+                    RequestType::Abort => break,
                 }
             }
             for monster in monsters.values_mut() {
@@ -194,12 +202,27 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                     .unwrap()
                     .run(&mut world_stage, monster);
             }
+            if is_dungeon_complete(&mut world_stage, &players) {
+                s_to_event
+                    .send(ResponseType::DungeonComplete)
+                    .unwrap();
+                for pl in players.values() {
+                    world_stage.actor(pl.id).unwrap().status = Status::Active;
+                }
+
+            }
 
             std::thread::yield_now();
         }
     });
 
     (s_to_state, r_at_event)
+}
+fn is_dungeon_complete(world_stage: &mut WorldStage, players: &HashMap<u32, Player>) -> bool {
+    players.len() > 0 &&
+    players
+        .values()
+        .all(|pl| world_stage.actor(pl.id()).unwrap().status != Status::Active)
 }
 
 fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
@@ -230,4 +253,10 @@ fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
         .unwrap();
 
     MonsterInstance::new(&MONSTERS[index], id)
+}
+
+impl Drop for StateManager {
+    fn drop(&mut self) {
+        self.s_to_state.send(RequestType::Abort).unwrap();
+    }
 }

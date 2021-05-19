@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
-use crate::state::transforms::{
+use crate::state::{transforms::{
     transform::{Direction, Transform},
     vec2::Vec2,
-};
+}};
 use simple_serializer::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum Type {
-    Hello,
+    Hello(String),
     Welcome(u32, String),         // id, dungeon paths
     NewPlayer(u32, String, Vec2), // id, (x, y)
     NewMonster(u32, u32, Vec2),   // template_id, instance_id, pos
@@ -18,6 +18,8 @@ pub enum Type {
     Miss(u32, u32),
     Dead(u32),
     Escaped(u32),
+    DungeonComplete,
+    Reconnect,
     Dropped,
 }
 
@@ -25,7 +27,7 @@ impl Serialize for Type {
     type SerializeTo = String;
     fn serialize(&self) -> String {
         match self {
-            Type::Hello => "Hello".to_string(),
+            Type::Hello(name) => format!("Hello::{}", name),
             Type::Welcome(id, dun) => format!("Welcome::{}::{}", id, dun),
             Type::NewPlayer(id, name, pos) => {
                 format!("NewPlayer::{}::{}::{}", id, name, pos.serialize())
@@ -41,6 +43,8 @@ impl Serialize for Type {
             Type::Miss(att_id, def_id) => format!("Miss::{}::{}", att_id, def_id),
             Type::Dead(id) => format!("Dead::{}", id),
             Type::Escaped(id) => format!("Escaped::{}", id),
+            Type::DungeonComplete => format!("DungeonComplete::"),
+            Type::Reconnect => format!("Reconnect::"),
             Type::Dropped => "Drop".to_string(),
         }
     }
@@ -53,7 +57,7 @@ impl Deserialize for Type {
         let segs: Vec<&str> = from.split("::").collect();
 
         match segs[0].trim() {
-            "Hello" => Type::Hello,
+            "Hello" => Type::Hello(segs[1].to_string()),
             "Left" => {
                 if let Ok(id) = u32::from_str(segs[1].trim()) {
                     Type::PlayerLeft(id)

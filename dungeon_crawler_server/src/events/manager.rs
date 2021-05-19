@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap, net::SocketAddr, time::Duration};
 
 use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
@@ -15,6 +15,8 @@ use crate::{
 };
 
 pub struct EventManager {
+    state_manager: StateManager, 
+
     r_from_client: PacketReceiver,
     s_to_clients: PacketSender,
     s_to_state: Sender<RequestType>,
@@ -32,14 +34,15 @@ impl EventManager {
     ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
         let dun = Dungeon::new(75, 75);
-        let state = StateManager::new(dun);
-        let (s_to_state, r_from_state) = state.get_sender_receiver();
+        let state_manager = StateManager::new(dun);
+        let (s_to_state, r_from_state) = state_manager.get_sender_receiver();
 
         for i in 0..10 {
             s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
         }
 
         EventManager {
+            state_manager,
             r_from_client,
             s_to_clients,
             s_to_state,
@@ -100,15 +103,15 @@ impl EventManager {
     ///
     fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
+        println!("{}", msg);
 
         // Parse the msg into an appropriate event
         let event = Type::deserialize(&msg);
 
         match event {
-            Type::Hello => {
-                println!("Received msg from {}", addr);
+            Type::Hello(name) => {
                 self.s_to_state
-                    .send(RequestType::NewPlayer(addr, self.id_next))
+                    .send(RequestType::NewPlayer(addr, self.id_next, name))
                     .unwrap();
                 self.addrs.insert(addr, self.id_next);
                 self.id_next += 1;
@@ -133,15 +136,6 @@ impl EventManager {
 
     fn parse_state_response(&mut self, response: ResponseType) {
         match response {
-            ResponseType::NewMonster(t_id, i_id, pos, _dir) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: true,
-                        msg: Type::NewMonster(t_id, i_id, pos).serialize(),
-                    })
-                    .unwrap();
-            }
             ResponseType::MonsterMoved(id, transform) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -193,6 +187,36 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            ResponseType::DungeonComplete => {
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: true,
+                        msg: Type::DungeonComplete.serialize(),
+                    })
+                    .unwrap();
+
+                std::thread::sleep(Duration::from_secs(5));
+
+                self.state_manager = StateManager::new(Dungeon::new(75, 75));
+                let (s, r) = self.state_manager.get_sender_receiver();
+                self.s_to_state = s;
+                self.r_from_state = r;
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: true,
+                        msg: Type::Reconnect.serialize()
+                    })
+                    .unwrap();
+
+                for i in self.id_next..self.id_next + 10 {
+                    self.s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
+                }
+
+                self.id_next += 10; 
+            }
+            _ => {}
         }
     }
 
