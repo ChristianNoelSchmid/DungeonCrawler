@@ -46,7 +46,7 @@ static MONSTERS: [Monster; 1] = [
         id: 0,
         name: "Goblin",
         spawn_chance: 10,
-        sight_range: 7,
+        sight_range: 4,
     },
     /*Monster {
         stats: Stats {
@@ -114,6 +114,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                 .cloned()
                 .map(|s| Vec2(s.0, s.1))
                 .collect(),
+            Vec2::from_tuple(dungeon.entrance),
             Vec2::from_tuple(dungeon.exit),
             s_to_event.clone(),
         );

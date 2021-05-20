@@ -151,7 +151,7 @@ pub fn visible_actors(
     while f <= end {
         i = 1.0;
         while i < sight_range as f32
-            && i <= sight_range as f32 * (MAX_RAD - f32::min((begin - f).abs(), (end - f).abs()))
+            && i <= sight_range as f32 * f32::min((begin - f).abs(), (end - f).abs())
                 / MAX_RAD
         {
             let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);

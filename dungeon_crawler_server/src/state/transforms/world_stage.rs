@@ -19,6 +19,7 @@ use super::{
 pub struct WorldStage {
     actors: HashMap<u32, Actor>,
     paths: HashSet<Vec2>,
+    entrance: Vec2,
     exit: Vec2,
     filled_spots: HashSet<Vec2>,
 
@@ -26,10 +27,11 @@ pub struct WorldStage {
 }
 
 impl WorldStage {
-    pub fn new(paths: HashSet<Vec2>, exit: Vec2, s_to_event: Sender<ResponseType>) -> Self {
+    pub fn new(paths: HashSet<Vec2>, entrance: Vec2, exit: Vec2, s_to_event: Sender<ResponseType>) -> Self {
         Self {
             actors: HashMap::new(),
             paths,
+            entrance,
             exit,
             filled_spots: HashSet::new(),
             s_to_event,
@@ -167,6 +169,7 @@ impl WorldStage {
             .paths
             .iter()
             .filter(|path| !self.filled_spots.contains(path))
+            .filter(|path| path.distance(self.entrance) > 15.0)
             .choose(&mut thread_rng())
             .unwrap()
     }

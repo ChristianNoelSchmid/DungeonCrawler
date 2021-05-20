@@ -38,6 +38,9 @@ namespace DungeonCrawler.Networking
         [SerializeField]
         private UIStatBar _statBar;
 
+        [SerializeField]
+        private CameraMovement _cameraMovement;
+
         private Vector2Int _prevPlayerPosition;
 
         private const float _playerUpdateIntevalSeconds = 0.1f;
@@ -168,6 +171,7 @@ namespace DungeonCrawler.Networking
                                        // info and begin the Player position transfer
 
                     _dungeonGen.Dungeon = welcome.Model.Value;
+                    _cameraMovement.Target = _playerPosition.transform;
                     _playerPosition.Value = _dungeonGen.Dungeon.Entrance;
                     _playerId = welcome.Model.Id;
 
@@ -239,6 +243,7 @@ namespace DungeonCrawler.Networking
                 case Reconnect _:
 
                     _actorGen.ResetAll();
+                    _dungeonGen.GetComponent<LightGenerator>().Initialized = false;
                     _datagramHandler.SendDatagram(
                         new Hello { Player = new Player { Name = _playerName } }.CreateString(),
                         true

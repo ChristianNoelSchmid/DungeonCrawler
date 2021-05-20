@@ -15,7 +15,8 @@ namespace DungeonCrawler.Monobehaviours
         private Dictionary<Vector2Int, float> _lightUpdates;
 
         private readonly WaitForSeconds _waitForInterval = new WaitForSeconds(0.1f);
-        private bool _initialized = false;
+
+        public bool Initialized { get; set; } = false;
 
         public void ImportDungeon(IEnumerable<Voxel> voxels)
         {
@@ -36,12 +37,12 @@ namespace DungeonCrawler.Monobehaviours
                 _lightValues.Add(pos, new Dictionary<ActorLight, float>());
             }
 
-            _initialized = true;
+            Initialized = true;
         }
 
         public void UpdateLight(DungeonCrawler.Monobehaviours.ActorLight light)
         {
-            if(!_initialized) return;
+            if(!Initialized) return;
 
             var position = light.Position.Value;
             var intensityDecrement = (1.0f / light.Range * light.Intensity);
@@ -95,7 +96,7 @@ namespace DungeonCrawler.Monobehaviours
 
         private void Update()
         {
-            if(!_initialized) return;
+            if(!Initialized) return;
 
             var keys = _lightUpdates.Keys.ToArray();
             foreach(var pos in keys)
