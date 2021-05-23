@@ -20,6 +20,7 @@ namespace DungeonCrawler.Monobehaviours
 
         private GridPosition _gridPosition;
         private MoveRepeatTimer [] _timers;
+        private Animator _animator;
 
         private Transform _transform;
 
@@ -27,6 +28,7 @@ namespace DungeonCrawler.Monobehaviours
         {
             _gridPosition = GetComponent<GridPosition>();
             _transform = transform;
+            _animator = GetComponent<Animator>();
             if(_gridPosition == null)
                 Debug.LogError("Expected GridPosition on MonoBehaviour, but it wasn't found.");
 
@@ -66,6 +68,9 @@ namespace DungeonCrawler.Monobehaviours
 
             if (Input.GetKeyDown(KeyCode.Space))
                 GetComponent<ActorLight>().Enabled = !GetComponent<ActorLight>().Enabled;
+    
+            if(newPos != Vector2Int.zero)
+                _animator.SetTrigger("Move");
 
             if(Obstacles.UpdateObstacle(_transform, _gridPosition.Value + newPos))
             {

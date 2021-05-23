@@ -51,7 +51,7 @@ impl DatagramHandler {
     ///
     pub fn new(port: u32) -> std::io::Result<Self> {
         // Attempt to create the UdpSocket.
-        let socket = UdpSocket::bind(format!("127.0.0.1:{}", port))?;
+        let socket = UdpSocket::bind(format!("0.0.0.0:{}", port))?;
         socket.set_nonblocking(true)?;
 
         // Convert the socket to a Arc Mutex, for concurrency

@@ -20,14 +20,17 @@ public class CameraMovement : MonoBehaviour
 
     void Update() 
     {
-        var position = Vector3.Lerp(
-            _transform.position, 
-            _target.position, 
-            Time.deltaTime * _speed
-        );
+        if (Vector2.Distance(_transform.position, _target.position) > 0.25f)
+        {
+            var position = Vector3.Lerp(
+                _transform.position,
+                _target.position,
+                Time.deltaTime * _speed
+            );
 
-        position.z = _transform.position.z;
+            position.z = _transform.position.z;
 
-        _transform.position = position;
+            _transform.position = position;
+        }
     }
 }

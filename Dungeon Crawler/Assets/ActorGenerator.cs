@@ -43,7 +43,10 @@ namespace DungeonCrawler.Monobehaviours
             if (_actorPositions.ContainsKey(id))
             {
                 _actorPositions[id].FromPositionModel(position);
-                Obstacles.UpdateObstacle(_actorPositions[id].transform, _actorPositions[id].Value);
+                if(Obstacles.UpdateObstacle(_actorPositions[id].transform, _actorPositions[id].Value))
+                {
+                    _actorPositions[id].GetComponent<Animator>().SetTrigger("Move");
+                }
             }
         }
         public void AddClientPlayer(GridPosition position, string name, int id)
