@@ -17,7 +17,7 @@ use crate::state::{
 };
 
 const POS_TO_CONSIDER: [Vec2; 4] = [Vec2(1, 0), Vec2(-1, 0), Vec2(0, 1), Vec2(0, -1)];
-const MAX_RAD: f32 = PI / 2.0;
+const MAX_RAD: f32 = PI;
 
 ///
 /// A wrapper around (u32, u32), with cost
@@ -140,10 +140,10 @@ pub fn visible_actors(
 ) -> HashSet<u32> {
     let mut ids = HashSet::new();
 
-    let (begin, end) = if tr.dir == Direction::Left {
-        (PI / 2.0, 3.0 * PI / 2.0)
+    let (begin, end, center) = if tr.dir == Direction::Left {
+        (PI / 2.0, 3.0 * PI / 2.0, PI)
     } else {
-        (-PI / 2.0, PI / 2.0)
+        (-PI / 2.0, PI / 2.0, 0.0)
     };
 
     let mut f = begin;
@@ -151,8 +151,7 @@ pub fn visible_actors(
     while f <= end {
         i = 1.0;
         while i < sight_range as f32
-            && i <= sight_range as f32 * f32::min((begin - f).abs(), (end - f).abs())
-                / MAX_RAD
+            && i <= (sight_range as f32 * (MAX_RAD - (center - f).abs()) / MAX_RAD) + 1.0
         {
             let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);
             if !world_stage.is_on_path(spot) {

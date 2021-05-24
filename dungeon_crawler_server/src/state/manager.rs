@@ -46,7 +46,7 @@ static MONSTERS: [Monster; 1] = [
         id: 0,
         name: "Goblin",
         spawn_chance: 10,
-        sight_range: 4,
+        sight_range: 3,
     },
     /*Monster {
         stats: Stats {

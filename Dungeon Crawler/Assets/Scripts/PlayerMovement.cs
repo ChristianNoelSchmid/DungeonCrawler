@@ -16,6 +16,9 @@ namespace DungeonCrawler.Monobehaviours
 
     public class PlayerMovement : MonoBehaviour
     {
+        private const float MOVE_INC = 0.125f;
+        private const float DIAG_INC = 1.4f;
+
         public static bool Disabled { get; set; } = false;
 
         private GridPosition _gridPosition;
@@ -56,7 +59,7 @@ namespace DungeonCrawler.Monobehaviours
                 {
                     _timers[i].timer += Time.deltaTime
                         / (Input.GetKey(KeyCode.LeftShift) ? 4.0f : 1.0f);
-                    if(_timers[i].timer >= (keysDown <= 1 ? 0.1f : 0.14f)) 
+                    if(_timers[i].timer >= (keysDown <= 1 ? MOVE_INC : (MOVE_INC * DIAG_INC))) 
                     {
                         newPos += _timers[i].direction;
                         _timers[i].timer = 0.0f;
