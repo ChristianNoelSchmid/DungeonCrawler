@@ -1,7 +1,7 @@
 use std::{net::SocketAddr, str::FromStr, time::Duration};
 
 use udp_server::{
-    handler::DatagramHandler,
+    manager::DatagramManager,
     packets::{ReceivePacket, SendPacket},
 };
 
@@ -10,10 +10,10 @@ use uuid::Uuid;
 const PRINT_UUIDS: bool = true;
 
 fn main() -> std::io::Result<()> {
-    let h1 = DatagramHandler::new(5000)?;
-    let h2 = DatagramHandler::new(5001)?;
+    let h1 = DatagramManager::new(5000)?;
+    let h2 = DatagramManager::new(5001)?;
 
-    let h3 = DatagramHandler::new(5002)?;
+    let h3 = DatagramManager::new(5002)?;
     let addrs = vec![SocketAddr::from_str("127.0.0.1:5002").unwrap()];
 
     let (s1, _) = h1.get_sender_receiver();
