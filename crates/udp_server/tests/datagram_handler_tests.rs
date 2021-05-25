@@ -3,14 +3,14 @@ mod datagram_handler_tests {
 
     use std::{net::SocketAddr, str::FromStr, thread, time::Duration};
     use udp_server::{
-        handler::DatagramHandler,
+        manager::DatagramManager,
         packets::{ReceivePacket, SendPacket},
     };
 
-    fn gen_handlers(port1: u32, port2: u32) -> (DatagramHandler, DatagramHandler) {
+    fn gen_handlers(port1: u32, port2: u32) -> (DatagramManager, DatagramManager) {
         return (
-            DatagramHandler::new(port1).unwrap(),
-            DatagramHandler::new(port2).unwrap(),
+            DatagramManager::new(port1).unwrap(),
+            DatagramManager::new(port2).unwrap(),
         );
     }
 

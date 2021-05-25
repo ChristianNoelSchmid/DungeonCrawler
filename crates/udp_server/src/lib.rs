@@ -1,5 +1,5 @@
 mod enums;
-pub mod handler;
+pub mod manager;
 pub mod packets;
-mod resolver;
+mod ack_resolving;
 mod types;

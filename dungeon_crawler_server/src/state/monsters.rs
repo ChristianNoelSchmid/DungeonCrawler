@@ -114,7 +114,7 @@ impl Follower for MonsterInstance {
 impl Combater for MonsterInstance {
     fn charge_attk(&mut self) -> bool {
         if let Some(attk) = self.charge_attk {
-            if Instant::now() - attk > Duration::from_millis(500) {
+            if Instant::now() - attk > Duration::from_millis(750) {
                 self.charge_attk = None;
                 return true;
             }
