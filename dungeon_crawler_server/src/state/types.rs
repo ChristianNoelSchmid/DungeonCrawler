@@ -2,11 +2,9 @@ use std::net::SocketAddr;
 
 use crate::state::snapshot::StateSnapshot;
 
-use super::{
-    transforms::{
-        transform::{Direction, Transform},
-        vec2::Vec2,
-    },
+use super::transforms::{
+    transform::{Direction, Transform},
+    vec2::Vec2,
 };
 
 pub enum RequestType {

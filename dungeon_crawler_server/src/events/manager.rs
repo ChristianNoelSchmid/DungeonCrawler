@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub struct EventManager {
-    state_manager: StateManager, 
+    state_manager: StateManager,
 
     r_from_client: PacketReceiver,
     s_to_clients: PacketSender,
@@ -206,7 +206,7 @@ impl EventManager {
                     .send(SendPacket {
                         addrs: self.all_addrs(),
                         is_rel: true,
-                        msg: Type::Reconnect.serialize()
+                        msg: Type::Reconnect.serialize(),
                     })
                     .unwrap();
 
@@ -214,7 +214,7 @@ impl EventManager {
                     self.s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
                 }
 
-                self.id_next += 10; 
+                self.id_next += 10;
             }
             _ => {}
         }

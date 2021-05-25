@@ -9,8 +9,8 @@ mod datagram_handler_tests {
 
     fn gen_handlers(port1: u32, port2: u32) -> (DatagramManager, DatagramManager) {
         return (
-            DatagramManager::new(port1).unwrap(),
-            DatagramManager::new(port2).unwrap(),
+            DatagramManager::new(port1, true).unwrap(),
+            DatagramManager::new(port2, true).unwrap(),
         );
     }
 

@@ -2,9 +2,7 @@ use dungeon_generator::inst::Dungeon;
 
 use std::net::SocketAddr;
 
-use super::{
-    transforms::{transform::Transform, vec2::Vec2},
-};
+use super::transforms::{transform::Transform, vec2::Vec2};
 
 pub struct StateSnapshot {
     pub addr_for: SocketAddr,

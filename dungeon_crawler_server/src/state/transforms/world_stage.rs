@@ -27,7 +27,12 @@ pub struct WorldStage {
 }
 
 impl WorldStage {
-    pub fn new(paths: HashSet<Vec2>, entrance: Vec2, exit: Vec2, s_to_event: Sender<ResponseType>) -> Self {
+    pub fn new(
+        paths: HashSet<Vec2>,
+        entrance: Vec2,
+        exit: Vec2,
+        s_to_event: Sender<ResponseType>,
+    ) -> Self {
         Self {
             actors: HashMap::new(),
             paths,

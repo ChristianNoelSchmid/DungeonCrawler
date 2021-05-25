@@ -17,11 +17,14 @@ pub enum Status {
 impl Serialize for Status {
     type SerializeTo = String;
     fn serialize(&self) -> Self::SerializeTo {
-        format!("{}", match self {
-            Status::Active=> 0,
-            Status::Dead => 1,
-            Status::Escaped => 2,
-        })
+        format!(
+            "{}",
+            match self {
+                Status::Active => 0,
+                Status::Dead => 1,
+                Status::Escaped => 2,
+            }
+        )
     }
 }
 

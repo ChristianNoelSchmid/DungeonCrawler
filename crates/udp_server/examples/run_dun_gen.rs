@@ -8,7 +8,7 @@ use dungeon_generator::inst::Dungeon;
 const PORT: u32 = 5000;
 
 fn main() -> std::io::Result<()> {
-    let handler = DatagramManager::new(PORT)?;
+    let handler = DatagramManager::new(PORT, true)?;
     let (s, r) = handler.get_sender_receiver();
     let mut addrs = Vec::new();
 

@@ -6,11 +6,11 @@ mod event_handler_tests {
     #[test]
     fn test_send_receive() {
         todo!();
-        let mut dgm_h1 = DatagramManager::new(6000).unwrap();
+        let mut dgm_h1 = DatagramManager::new(6000, true).unwrap();
         let (s, r) = dgm_h1.get_sender_receiver();
         let mut evn_h1 = EventManager::new(r, s);
         evn_h1.start();
 
-        let dgm_h2 = DatagramManager::new(6001);
+        let dgm_h2 = DatagramManager::new(6001, true);
     }
 }

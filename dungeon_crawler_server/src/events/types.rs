@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use crate::state::{transforms::{
+use crate::state::transforms::{
     transform::{Direction, Transform},
     vec2::Vec2,
-}};
+};
 use simple_serializer::{Deserialize, Serialize};
 
 #[derive(Debug)]

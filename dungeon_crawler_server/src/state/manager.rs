@@ -204,13 +204,10 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                     .run(&mut world_stage, monster);
             }
             if is_dungeon_complete(&mut world_stage, &players) {
-                s_to_event
-                    .send(ResponseType::DungeonComplete)
-                    .unwrap();
+                s_to_event.send(ResponseType::DungeonComplete).unwrap();
                 for pl in players.values() {
                     world_stage.actor(pl.id).unwrap().status = Status::Active;
                 }
-
             }
 
             std::thread::yield_now();
@@ -220,10 +217,10 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
     (s_to_state, r_at_event)
 }
 fn is_dungeon_complete(world_stage: &mut WorldStage, players: &HashMap<u32, Player>) -> bool {
-    players.len() > 0 &&
-    players
-        .values()
-        .all(|pl| world_stage.actor(pl.id()).unwrap().status != Status::Active)
+    players.len() > 0
+        && players
+            .values()
+            .all(|pl| world_stage.actor(pl.id()).unwrap().status != Status::Active)
 }
 
 fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
