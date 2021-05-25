@@ -237,7 +237,7 @@ impl DatagramHandler {
                 }
             }
             // Yield the thread (so it won't immediately lock the socket again)
-            thread::yield_now();
+            thread::sleep(Duration::from_micros(10));
         });
         r
     }
@@ -300,7 +300,7 @@ impl DatagramHandler {
                     }
                 }
                 // Yield the thread (so it won't immediately lock the socket again)
-                thread::yield_now();
+                thread::sleep(Duration::from_micros(10));
             }
         });
 

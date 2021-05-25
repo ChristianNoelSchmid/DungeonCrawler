@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::state::{
     ai::ai_package_collections::{IDLE, MELEE_COMBAT},
@@ -213,7 +213,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
 
             }
 
-            std::thread::yield_now();
+            std::thread::sleep(Duration::from_micros(10));
         }
     });
 
