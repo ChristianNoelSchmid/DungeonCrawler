@@ -60,35 +60,29 @@ impl AckResolverManager {
     /// being delivered.
     ///
     pub fn create_rel_resolver(&mut self, addr: SocketAddr, msg: String) -> u64 {
-        // The index of the next reliable datagram being sent be addr
-        let next_to_index;
-
         // Check if a reliable datagram has already been sent to this client,
         // and if so, grab the next index. Otherwise, add the client to next_to and
         // next_from, and create a new resolver list
-        if !self.next_to.contains_key(&addr) {
-            next_to_index = 0;
-            self.next_to.insert(addr, 1);
-            self.resolvers.insert(addr, VecDeque::new());
-        } else {
-            next_to_index = self.next_to[&addr];
-            self.next_to.insert(addr, next_to_index + 1);
-        }
+        let next_to = self.next_to.entry(addr).or_insert(0);
+        *next_to += 1;
 
         let resolver = AckResolver {
             addr,
             msg,
-            index: next_to_index,
+            index: *next_to - 1,
             start_time: Instant::now(),
             last_update_time: Instant::now(),
         };
 
-        self.resolvers.get_mut(&addr).unwrap().insert(0, resolver);
-        if !self.timeouts.contains_key(&addr) {
-            self.timeouts.insert(addr, Duration::from_millis(500));
-        }
+        self.resolvers
+            .entry(addr)
+            .or_insert_with(VecDeque::new)
+            .insert(0, resolver);
+        self.timeouts
+            .entry(addr)
+            .or_insert_with(|| Duration::from_millis(500));
 
-        next_to_index
+        *next_to - 1
     }
 
     ///
@@ -109,7 +103,7 @@ impl AckResolverManager {
                 // If the client isn't in the server's cache, but the
                 // ack index is 0, this represents a new connection.
                 // Add the client addr to the cache, and return NewRel
-                return if index_from == 0 {
+                if index_from == 0 {
                     self.next_from.insert(addr, 1);
                     RelResult::NewRel
                 } else {
@@ -118,7 +112,7 @@ impl AckResolverManager {
                     // client was previously connected, but has been dropped.
                     // Inform the client of such!
                     RelResult::ClientDropped
-                };
+                }
             }
             // If there already is a ack index in the cache, see if
             // it matches the index received
@@ -126,28 +120,35 @@ impl AckResolverManager {
                 let index = *index;
                 // If it does, send an Ack back to the client
                 // and increment the index in the cache.
-                return if index == index_from {
-                    self.next_from.insert(addr, index + 1);
-                    RelResult::NewRel
-                // If it's too low, this is a re-sent datagram which
-                // has already been processed. Simply resend an Ack
-                } else if index > index_from {
-                    RelResult::RepeatedRel
-                } else {
+                match index {
+                    i if i == index_from => {
+                        self.next_from.insert(addr, index + 1);
+                        RelResult::NewRel
+                    }
+                    // If it's too low, this is a re-sent datagram which
+                    // has already been processed. Simply resend an Ack
+                    i if i > index_from => RelResult::RepeatedRel,
+
                     // Otherwise, it's too high: request the client to
                     // resend its reliable messages stored in its own resolver
-                    RelResult::NeedsRes
-                };
+                    _ => RelResult::NeedsRes,
+                }
             }
         }
     }
 
+    /// Removes an `addr` from the AckResolverManager.
+    /// Any unresolved messages associated with the client
+    /// are dropped.
     pub fn remove_client(&mut self, addr: SocketAddr) {
         self.resolvers.remove(&addr);
         self.next_from.remove(&addr);
         self.next_to.remove(&addr);
     }
 
+    /// Triggered when the DatagramManager receives a RES datagram.
+    /// Requests that the AckResolverManager retrieve all reliable
+    /// datagrams applied to `addr`.
     pub fn resend_to(&mut self, addr: SocketAddr) -> Vec<&AckResolver> {
         let mut resolvers = Vec::new();
         if let Some(list) = self.resolvers.get_mut(&addr) {
@@ -158,6 +159,9 @@ impl AckResolverManager {
         resolvers
     }
 
+    /// Retrieves all timeout reliable datagrams.
+    /// The DatagramManager calls this to resend reliable
+    /// datagrams that have yet to be acknowledged by the client.
     pub fn retrieve_timeouts(&mut self) -> Vec<&mut AckResolver> {
         let mut resolvers = Vec::new();
         for list in self.resolvers.values_mut() {

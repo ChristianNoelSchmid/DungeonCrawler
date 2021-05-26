@@ -1,28 +1,35 @@
-//! RPG Server - Datagram Handler
+//! UDP datagram manager that receives and forwards UDP
+//! datagram packets from clients
 //!
 //! Christian Schmid - April 2021
 //! CS510 - Rust Programming
 
 use super::{
+    ack_resolving::AckResolverManager,
     enums::{HandlerState, RelResult},
     packets::{
         PacketReceiver, PacketSender, ReceivePacket,
         ReceivePacket::{ClientMessage, DroppedClient},
         SendPacket,
     },
-    ack_resolving::AckResolverManager,
     types::Type,
 };
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use simple_serializer::{Deserialize, Serialize};
 
-use std::{collections::{HashMap, HashSet}, net::{SocketAddr, UdpSocket}, sync::{Arc, Mutex}, thread, time::{Duration, Instant}};
+use std::{
+    collections::{HashMap, HashSet},
+    net::{SocketAddr, UdpSocket},
+    sync::{Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 
 const DEFAULT_DROP_TIME: Duration = Duration::from_secs(5);
 
 ///
-/// A udp datagram handler, which recieves
+/// A udp datagram manager, which recieves
 /// the lowest-level byte data from incoming
 /// clients.
 ///
@@ -31,24 +38,24 @@ const DEFAULT_DROP_TIME: Duration = Duration::from_secs(5);
 /// based on type (see datagram/types.rs)
 ///
 pub struct DatagramManager {
-    // A PacketSender, which server threads can
-    // use to send clients datagrams
+    // Takes SendPackets from the server and
+    // sends them to the appropriate clients.
     packet_sender: PacketSender,
+    // Takes ReceivePackets from clients and
+    // forwards them to the server
     packet_receiver: PacketReceiver,
 
-    // Two crossbeam Senders, which allows the DatagramHandler
+    // Two crossbeam Senders, which allows the DatagramManager
     // thread to communicate to its constituent threads
-    // the state of the handler (ie. listening, or not listening,
+    // the state of the handler (ie. listening, not listening,
     // aborting)
     s_to_clients_state: Sender<HandlerState>,
     s_from_clients_state: Sender<HandlerState>,
 }
 
 impl DatagramManager {
-    ///
     /// Creates a new udp socket reciever / listener, on specified `port`.
     /// Begins listening for datagrams from clients.
-    ///
     pub fn new(port: u32) -> std::io::Result<Self> {
         // Attempt to create the UdpSocket.
         let socket = UdpSocket::bind(format!("0.0.0.0:{}", port))?;
@@ -87,17 +94,13 @@ impl DatagramManager {
         })
     }
 
-    ///
-    /// Clones a `Sender` and `Receiver`, to be used in other systems
-    ///
+    /// Clones a `PacketSender` and `PacketReceiver`, to be used in other systems
     pub fn get_sender_receiver(&self) -> (PacketSender, PacketReceiver) {
         (self.packet_sender.clone(), self.packet_receiver.clone())
     }
 
-    ///
-    /// Starts or stops the `DatagramHandler`'s sending
+    /// Starts or stops the `DatagramManager`'s sending
     /// and receiving of data, determined by `is_listening`.
-    ///
     pub fn set_listening(&mut self, is_listening: bool) {
         let state = if is_listening {
             HandlerState::Listening
@@ -105,14 +108,13 @@ impl DatagramManager {
             HandlerState::Stopped
         };
 
+        // Inform the constituent threads
         self.s_from_clients_state.send(state).unwrap();
         self.s_to_clients_state.send(state).unwrap();
     }
 
-    ///
     /// Begins the receive loop for a concurrent `socket`, returning
     /// the `Reciever` which awaits messages from clients
-    ///
     fn receive_clients_loop(
         socket: Arc<Mutex<UdpSocket>>,
         ack_resolver: Arc<Mutex<AckResolverManager>>,
@@ -137,9 +139,10 @@ impl DatagramManager {
                 HandlerState::Listening => {}
             }
 
-            { // Socket and AckResolver lock scope
-              // Without this, the thread would sleep at end of
-              // loop with the locks still in place.
+            {
+                // Socket and AckResolver lock scope
+                // Without this, the thread would sleep at end of
+                // loop with the locks still in place.
 
                 // Retrieve a lock on the socket
                 let socket = socket.lock().unwrap();
@@ -152,7 +155,7 @@ impl DatagramManager {
                 let mut client_addrs = Vec::new();
                 for (k, v) in &client_ping_times {
                     if (now - *v) > DEFAULT_DROP_TIME {
-                        client_addrs.push(k.clone());
+                        client_addrs.push(*k);
                     }
                 }
 
@@ -176,7 +179,6 @@ impl DatagramManager {
 
                 // If a datagram has been received be socket
                 if let Ok((amt, addr)) = socket.recv_from(&mut buf) {
-
                     if dropped_clients.contains(&addr) {
                         socket.send_to(&Type::Drop.serialize(), addr).unwrap();
                         continue;
@@ -186,7 +188,7 @@ impl DatagramManager {
                     // string as a DatagramType
                     let buf = &buf[..amt];
                     let msg = String::from_utf8(buf.to_vec()).unwrap();
-                    let datagram = Type::deserialize(&String::from(msg));
+                    let datagram = Type::deserialize(&msg);
                     println!("{:?}", datagram);
 
                     client_ping_times.insert(addr, Instant::now());
@@ -221,6 +223,9 @@ impl DatagramManager {
                         Type::Ack(ack_index) => {
                             ack_resolver.accept_ack(addr, ack_index);
                         }
+                        // Resend messages inform the server to repackage the
+                        // client's reliable messages in the AckResolverManager and
+                        // resend them to the client
                         Type::Res => {
                             let resolvers = ack_resolver.resend_to(addr);
                             for res in resolvers {
@@ -232,6 +237,9 @@ impl DatagramManager {
                                     .unwrap();
                             }
                         }
+                        // Ping messages update the DatagramManager's
+                        // client map, to ensure that the manager doesn't
+                        // drop the client
                         Type::Ping => {
                             if client_ping_times.contains_key(&addr) {
                                 client_ping_times.insert(addr, Instant::now());
@@ -273,17 +281,21 @@ impl DatagramManager {
                 HandlerState::Listening => {}
             }
 
-            // If Ok, determine which clients the
-            // server wishes to send the datagrams to
+            // Test if the server needs to send a datagram
             if let Ok(data) = r.try_recv() {
-                let mut clients = Vec::new();
                 let SendPacket { addrs, is_rel, msg } = data;
 
+                // Retrieve all clients targeted by the datagram
+                let mut clients = Vec::new();
                 for addr in addrs {
                     clients.push(addr);
                 }
 
+                // Lock the socket and send
                 let socket = socket.lock().unwrap();
+
+                // If the datagram is reliable, ensure the AckResolverManager
+                // adds the new reliable message to it's cache
                 if is_rel {
                     let mut ack_resolver = ack_resolver.lock().unwrap();
                     for client in clients {
@@ -298,6 +310,7 @@ impl DatagramManager {
                             )
                             .unwrap();
                     }
+                // Otherwise, just send the unreliable message
                 } else {
                     for client in clients {
                         socket

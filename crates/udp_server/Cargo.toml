@@ -8,6 +8,5 @@ edition = "2018"
 
 [dependencies]
 simple_serializer = { path = '../simple_serializer/' }
-dungeon_generator = { path = '../dungeon_generator/' }
 crossbeam = '0.8'
 uuid = { version = "0.8.2", features = ["serde", "v4"] }

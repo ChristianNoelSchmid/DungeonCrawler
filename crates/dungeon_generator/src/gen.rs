@@ -5,7 +5,6 @@
 
 use rand::prelude::*;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 
 use noise::{NoiseFn, Perlin};
 
@@ -46,7 +45,7 @@ fn build_path(entrance: (i32, i32), exit: (i32, i32), width: i32) -> HashSet<(i3
     let mut rnd = thread_rng();
 
     // The paths set, returned at end
-    let mut paths = HashSet::<(i32, i32)>::from_iter([entrance, exit].iter().cloned());
+    let mut paths: HashSet<(i32, i32)> = [entrance, exit].iter().cloned().collect();
 
     // This algorithm ensures that the path being generated is always heading
     // towards the exit.

@@ -1,5 +1,5 @@
-//! General Enums for UdpHandler
-//! 
+//! General Enums for DatagramManager
+//!
 //! Christian Schmid 2021
 //!
 
@@ -16,7 +16,10 @@ pub enum HandlerState {
 }
 
 ///
-/// A result from a RelHandler
+/// A result from an AckResolverManager, specifying
+/// whether a given reliable index from a client
+/// is new, in order, or out of order.
+///
 #[derive(PartialEq, Eq, Debug)]
 pub enum RelResult {
     NewRel,
