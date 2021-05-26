@@ -15,14 +15,29 @@ pub struct AckResolver {
     last_update_time: Instant,
 }
 
+/// 
+/// Manages a cache of reliable datagrams which have
+/// yet to be acknowledged by the recipient.
+/// Enables reliable, in-order UDP transmission.
+///
 pub struct AckResolverManager {
-    next_to: HashMap<SocketAddr, u64>,
+    // A map of the next rel indices the server
+    // will send to a target recipient.
+    next_to: HashMap<SocketAddr, u64>, 
+    // A map of the next rel indices the server
+    // is expecting from target recipients.
     next_from: HashMap<SocketAddr, u64>,
+    // The cache of reliable datagrams. Added to when
+    // a new rel is sent and removed from after the client
+    // has acknowledged the rel datagram.
     resolvers: HashMap<SocketAddr, VecDeque<AckResolver>>,
+    // A map of Durations representing the average amount
+    // of RTT time between the server and a unique address.
     timeouts: HashMap<SocketAddr, Duration>,
 }
 
 impl AckResolverManager {
+    /// Creates a new `AckResolverManager` with default values.
     pub fn new() -> Self {
         Self {
             next_to: HashMap::new(),
@@ -32,8 +47,12 @@ impl AckResolverManager {
         }
     }
 
+    /// Removes the specified reliable datagram with the given
+    /// `addr` and `index`. Called after the DatagramHandler
+    /// accepts a client ACK datagram.
     pub fn accept_ack(&mut self, addr: SocketAddr, index: u64) {
-        let mut pop_back = false;
+        let mut pop_back = false; // avoids mutability ownership issues
+        // Retrieve the AckResolver
         if let Some(resolver_list) = self.resolvers.get_mut(&addr) {
             if let Some(resolver) = resolver_list.back() {
                 if resolver.index == index {
@@ -47,6 +66,7 @@ impl AckResolverManager {
                     pop_back = true;
                 }
             }
+            // If successful, remove the AckResolver from the list
             if pop_back {
                 resolver_list.pop_back();
             }
