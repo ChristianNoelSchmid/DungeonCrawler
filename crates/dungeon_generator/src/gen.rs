@@ -14,11 +14,9 @@ const PERLIN_SCALE: (f64, f64) = (0.25, 0.25);
 /// The threshold a perlin noise value must be greater than to be a path
 const PERLIN_THRESHOLD: f64 = 0.05;
 
-///
 /// Generates a path, given a perlin `seed`,
 /// `width` and `height` of the map, and the
 /// `entrance` and `exit` points
-///
 pub fn gen_paths(
     seed: f64,
     width: u32,
@@ -54,15 +52,24 @@ fn build_path(entrance: (i32, i32), exit: (i32, i32), width: i32) -> HashSet<(i3
     let mut move_dirs = Vec::with_capacity(3);
     let y_dir: i32 = if entrance.1 == 0 { 1 } else { -1 };
 
+    // While the exit hasn't been reached, continue building the path
     while current != exit {
+        // Clear the potential move directions
         move_dirs.clear();
+
+        // If the current point and exit have the same
+        // y-coordinate, travers current to the exit.
         if current.1 == exit.1 {
             current = if current.0 < exit.0 {
                 (current.0 + 1, current.1)
             } else {
                 (current.0 - 1, current.1)
             }
+        // Otherwise, create a list of potential directions
+        // the path can traverse next
         } else {
+            // If current's X is not on the left border, add
+            // left direction
             if current.0 != 0 {
                 move_dirs.push((current.0 - 1, current.1));
                 move_dirs.push((current.0 - 1, current.1));
@@ -70,6 +77,8 @@ fn build_path(entrance: (i32, i32), exit: (i32, i32), width: i32) -> HashSet<(i3
                     move_dirs.push((current.0 - 1, current.1));
                 }
             }
+            // If current's X is not on the right border, add
+            // right direction
             if current.0 < width - 1 {
                 move_dirs.push((current.0 + 1, current.1));
                 move_dirs.push((current.0 + 1, current.1));
@@ -77,8 +86,10 @@ fn build_path(entrance: (i32, i32), exit: (i32, i32), width: i32) -> HashSet<(i3
                     move_dirs.push((current.0 + 1, current.1));
                 }
             }
+            // Finally, push moving the y-coord towards the exit.
             move_dirs.push((current.0, current.1 + y_dir));
 
+            // Choose one of the potential directions as the new direction for the path.
             current = *move_dirs
                 .iter()
                 .filter(|dir| **dir != last)
@@ -93,6 +104,8 @@ fn build_path(entrance: (i32, i32), exit: (i32, i32), width: i32) -> HashSet<(i3
     paths
 }
 
+/// Layers a given path with perlin noise, adding more naturalness and
+/// variability to the path.
 fn layer_path(paths: &mut HashSet<(i32, i32)>, seed: f64, width: i32, height: i32) {
     let perlin = Perlin::new();
     let mut prln_path = HashSet::new();
@@ -112,6 +125,8 @@ fn layer_path(paths: &mut HashSet<(i32, i32)>, seed: f64, width: i32, height: i3
         }
     }
 
+    // Ensure that the perlin noise added to the dungeon
+    // is connected to the path. Remove those sections if they are not.
     let mut added_to = true;
 
     while added_to {

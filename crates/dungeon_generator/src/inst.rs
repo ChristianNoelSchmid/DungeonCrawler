@@ -6,6 +6,11 @@ use simple_serializer::Serialize;
 
 use super::gen::gen_paths;
 
+///
+/// A collection of paths which represents
+/// a given dungeon. The dungeon has a width, height,
+/// entrance, and exit.
+///
 #[derive(Clone)]
 pub struct Dungeon {
     width: u32,
@@ -39,7 +44,11 @@ impl Dungeon {
         );
         let exit = (
             (rng.next_u32() % width) as i32,
-            if entrance.1 == 0 { (height - 1) as i32 } else { 0 },
+            if entrance.1 == 0 {
+                (height - 1) as i32
+            } else {
+                0
+            },
         );
 
         let paths = gen_paths(rng.gen::<f64>(), width, height, entrance, exit);
@@ -52,15 +61,19 @@ impl Dungeon {
             paths,
         }
     }
+    /// An iterator over the paths in the dungeon.
     pub fn paths(&self) -> hash_set::Iter<(i32, i32)> {
         self.paths.iter()
     }
+    /// A reference to the paths HashSet
     pub fn paths_ref(&self) -> &HashSet<(i32, i32)> {
         &self.paths
     }
+    /// The horizontal bounds of the dungeon
     pub fn width(&self) -> u32 {
         self.width
     }
+    /// The vertical bounds of the dungeon
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -68,6 +81,9 @@ impl Dungeon {
 
 impl Serialize for Dungeon {
     type SerializeTo = String;
+    /// For the purpose of the Dungeon Crawler project,
+    /// Dungeon will Serialize to a String with the appropriate
+    /// delimeter between each value ("::")
     fn serialize(&self) -> String {
         let mut path_str = self.paths().len().to_string();
 
@@ -92,6 +108,8 @@ impl Serialize for Dungeon {
     }
 }
 
+// A simple text generation of the Dungeon, displaying its
+// walls, paths, entrance, and exit
 impl Debug for Dungeon {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Dungeon:\n{}", {
