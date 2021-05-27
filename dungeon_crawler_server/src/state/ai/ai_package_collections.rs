@@ -1,3 +1,7 @@
+//! Collection of AI Packages that an Entity can run
+//! 
+//! Christian Schmid 2021
+
 use std::time::{Duration, Instant};
 
 use rand::{prelude::IteratorRandom, thread_rng};
@@ -12,14 +16,20 @@ use crate::{
 
 use super::ai_packages::IndependentPackage;
 
+/// Represents an idle Entity. 
+/// Periodically moves Entity to new, close-by position.
 pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
+    // Requires that the enemy is not following a target
     req: |_world_stage, entity| entity.follow_target().is_none(),
+    // On start, have Entity find spot nearby
     on_start: |world_stage, entity| {
         let transform = world_stage.actor(entity.id()).unwrap().tr;
         if let Some(spot) = world_stage.open_spot_within(entity.id(), 5) {
             entity.set_path(find_shortest_path(world_stage, transform.pos, spot));
         }
     },
+    // For each step, traverse to target. If the Entity
+    // sees a Player, engage in combat
     step_next: |world_stage, entity| {
         let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
         let vis_pls = visible_actors(
@@ -42,8 +52,13 @@ pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
     pick_count: 10,
 };
 
+/// Represents an Entity engaging in melee combat.
+/// Follows target, attacking when adjacent.
 pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
+    // Requires that the enemy is following a target
     req: |_world_stage, entity| entity.follow_target().is_some(),
+    // On start, set path for Entity target and establish that the Entity
+    // just spotted the target
     on_start: |world_stage, entity| {
         // Get the entity and its target transforms
         entity.reset_last_sighting();
@@ -61,6 +76,8 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
             target_tr.pos,
         ));
     },
+    // For each step, approach the target if visible. If not within 3 seconds
+    // disengage combat.
     step_next: |world_stage, entity| {
         // Get the entity transform, and check if there are any visible players
         // in its view.
@@ -131,6 +148,7 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
     intv_range: (Duration::from_secs(2000), Duration::from_secs(3000)),
 };
 
+// The translation AI which Entities use to move from step to step
 fn translate_ai(world_stage: &mut WorldStage, entity: &mut dyn AI) -> AIPackageResult {
     let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
     if entity.charge_step() {

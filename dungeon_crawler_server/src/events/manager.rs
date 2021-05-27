@@ -14,24 +14,39 @@ use crate::{
     },
 };
 
+///
+/// Handles receiving data from the DatagramManager, parsing the data,
+/// converting the game state based on said data, and passing on the relevant
+/// information to associated clients.
+///
 pub struct EventManager {
+    // The state manager, which handles all the server's
+    // world state
     state_manager: StateManager, 
 
+    // The PacketSender / Receiver associated with the
+    // DatagramManager used to retrieve client packets.
     r_from_client: PacketReceiver,
     s_to_clients: PacketSender,
+
+    // The PacketSender / Receiver associated with the
+    // StateManager's update thread.
     s_to_state: Sender<RequestType>,
     r_from_state: Receiver<ResponseType>,
 
+    // The currently connected addrs. Is added to when the
+    // DatagramManager sends a packet from a new SocketAddr,
+    // and removes when the DatagramManager times out a client.
     addrs: HashMap<SocketAddr, u32>,
+
+    // A global instance ID counter. Incremented
+    // whenever a new StateManager entity is created.
     id_next: u32,
 }
 
 impl EventManager {
-    ///
     /// Creates a new EventHandler, and receives a DatagramHandler's
     /// client Receiver `r_from_client` and Sender `s_to_clients`.
-    /// This enables concurrent communication with the DatagramHandler.
-    ///
     pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
         let dun = Dungeon::new(75, 75);
         let state_manager = StateManager::new(dun);
@@ -43,19 +58,20 @@ impl EventManager {
 
         EventManager {
             state_manager,
+
             r_from_client,
             s_to_clients,
+
             s_to_state,
             r_from_state,
+
             addrs: HashMap::new(),
             id_next: 10,
         }
     }
 
-    ///
     /// Starts the EventHandler: begins an infinite
     /// loop to begin receiving packets from the DatagramHandler
-    ///
     pub fn start(&mut self) -> ! {
         loop {
             if let Ok(packet) = self.r_from_client.try_recv() {
@@ -103,12 +119,13 @@ impl EventManager {
     ///
     fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
-        println!("{}", msg);
 
         // Parse the msg into an appropriate event
         let event = Type::deserialize(&msg);
 
         match event {
+            // If a client has just joined and requesting a sync, inform the StateManager
+            // to add the Player and send a Welcome Packet
             Type::Hello(name) => {
                 self.s_to_state
                     .send(RequestType::NewPlayer(addr, self.id_next, name))
@@ -116,6 +133,8 @@ impl EventManager {
                 self.addrs.insert(addr, self.id_next);
                 self.id_next += 1;
             }
+            // If a client's position has moved, update the StateManager,
+            // and 
             Type::Moved(id, transform) => {
                 // If Moved, update in state and send to other clients
                 if self.addrs.contains_key(&addr) {
@@ -134,8 +153,11 @@ impl EventManager {
         snd_packets
     }
 
+    /// Parses responses sent by the `StateManager`, and sends the
+    /// information to the appropriate clients.
     fn parse_state_response(&mut self, response: ResponseType) {
         match response {
+            // If a monster has moved, inform all clients
             ResponseType::MonsterMoved(id, transform) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -145,12 +167,16 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            // If a StateSnapshot was sent, create a welcome packet for the
+            // client that sent `Hello`, and inform all connected clients
+            // of this new Player.
             ResponseType::StateSnapshot(snapshot) => {
                 let snd_msg_packets = self.prepare_welcome_packet(snapshot);
                 for packet in snd_msg_packets.into_iter() {
                     self.s_to_clients.send(packet).unwrap();
                 }
             }
+            // If the state registered a hit, send to all clients
             ResponseType::Hit(att_id, def_id, cur_health) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -160,6 +186,7 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            // If the state registered a miss, send to all clients
             ResponseType::Miss(att_id, def_id) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -169,6 +196,7 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            // If the state registered a Player has died, send to all clients
             ResponseType::Dead(id) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -178,6 +206,7 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            // If the state registered a Player has escaped, send to all clients
             ResponseType::Escaped(id) => {
                 self.s_to_clients
                     .send(SendPacket {
@@ -187,6 +216,8 @@ impl EventManager {
                     })
                     .unwrap();
             }
+            // If the state registered that all Players are either dead or escaped,
+            // reset the StateManager, creating a new dungeon.
             ResponseType::DungeonComplete => {
                 self.s_to_clients
                     .send(SendPacket {

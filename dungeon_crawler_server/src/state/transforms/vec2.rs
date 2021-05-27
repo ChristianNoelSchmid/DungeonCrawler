@@ -2,12 +2,17 @@ use std::ops::{Add, Mul, Sub};
 
 use simple_serializer::Serialize;
 
+///
+/// A 2-ple representing a 2D integer vector (x, y)
+///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Vec2(pub i32, pub i32);
 impl Vec2 {
+    /// Creates a new `Vec2` from the supplied `tuple`
     pub fn from_tuple(tuple: (i32, i32)) -> Self {
         Vec2(tuple.0, tuple.1)
     }
+    /// Determines the linear distance from this `Vec2` to `other`
     pub fn distance(&self, other: Vec2) -> f32 {
         f32::sqrt(((self.0 - other.0).pow(2) + (self.1 - other.1).pow(2)) as f32)
     }

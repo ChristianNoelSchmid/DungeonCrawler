@@ -6,21 +6,26 @@ use crate::state::{transforms::{
 }};
 use simple_serializer::{Deserialize, Serialize};
 
+///
+/// Enum for all possible Event Types the EventManager
+/// can parse.
+///
 #[derive(Debug)]
 pub enum Type {
-    Hello(String),
-    Welcome(u32, String),         // id, dungeon paths
-    NewPlayer(u32, String, Vec2), // id, (x, y)
-    NewMonster(u32, u32, Vec2),   // template_id, instance_id, pos
-    Moved(u32, Transform),        // id, transform
-    PlayerLeft(u32),              // id
-    Hit(u32, u32, i32),
-    Miss(u32, u32),
-    Dead(u32),
-    Escaped(u32),
-    DungeonComplete,
-    Reconnect,
-    Dropped,
+    Hello(String),              // a client joining the game                         (name)
+    Welcome(u32, String),       // info. the server relays to the client for syncing (id, dun_data)
+    NewPlayer
+        (u32, String, Vec2),    // informs clients of a new Player,                  (id, name, pos)
+    NewMonster(u32, u32, Vec2), // informs clients of a new Monster                  (temp_id, inst_id, pos)
+    Moved(u32, Transform),      // informs server / clients of moved entity          (id, transform)
+    PlayerLeft(u32),            // informs server / clients that a Player has left the server (id)
+    Hit(u32, u32, i32),         // informs clients that a Player has been hit        (attId, defId, healthLeft)
+    Miss(u32, u32),             // informs clients that a Player has been missed     (attId, defId)
+    Dead(u32),                  // informs clients that a Player has died            (id)
+    Escaped(u32),               // informs clients that a Player has escaped         (id)
+    DungeonComplete,            // informs clients that the Dungeon has been completed
+    Reconnect,                  // requests that the clients reconnect - new StateManager
+    Dropped,                    // a dropped packet
 }
 
 impl Serialize for Type {

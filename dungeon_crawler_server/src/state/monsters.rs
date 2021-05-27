@@ -12,21 +12,35 @@ use super::traits::Combater;
 
 ///
 /// Represents a particular monster type
-/// in the game. The reason `name` is static
-/// is to communicate that there are templates,
-/// rather than the Monster objects themselves.
+/// in the game. All `MonsterInstance`s are built
+/// on these templates.
 ///
 #[derive(Clone)]
 pub struct Monster {
+    // base Stats
     pub stats: Stats,
+    // base Attributes
     pub attrs: Attributes,
+
+    // The distance the Monster can see
     pub sight_range: u32,
 
+    // The Monster template's id
     pub id: u32,
+    // The name of the Monster
     pub name: &'static str,
+    // The chance the Monster has to spawn.
+    // The higher the value (in comparison to the
+    // other Monsters' spawn_chance's) the higher
+    // the chance of choosing this Monster
     pub spawn_chance: u32,
 }
 
+///
+/// An instance of a `Monster` template.
+/// implementing all the traits necessary
+/// to perform AI.
+///
 #[derive(Clone)]
 pub struct MonsterInstance {
     pub template: &'static Monster,
@@ -47,6 +61,8 @@ pub struct MonsterInstance {
 }
 
 impl MonsterInstance {
+    /// Create a new `MonsterInstance` using the given `template`,
+    /// and assigning it a unique `instance_id`
     pub fn new(template: &'static Monster, instance_id: u32) -> Self {
         Self {
             template,

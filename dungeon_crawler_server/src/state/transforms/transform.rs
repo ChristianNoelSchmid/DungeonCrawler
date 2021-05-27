@@ -4,6 +4,9 @@ use simple_serializer::Serialize;
 
 use super::vec2::Vec2;
 
+///
+/// Represents an Entity's facing direction
+/// 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Left,
@@ -23,6 +26,9 @@ impl Direction {
     }
 }
 
+///
+/// An Entity's Position and Direction
+///
 #[derive(Debug, Clone, Copy)]
 pub struct Transform {
     pub pos: Vec2,
@@ -30,12 +36,14 @@ pub struct Transform {
 }
 
 impl Transform {
+    /// Creates a new `Transform` with default pos and dir values
     pub fn new() -> Self {
         Self {
             pos: Vec2(0, 0),
             dir: Direction::Right,
         }
     }
+    /// Creates a new `Transform` with specified values
     pub fn with_values(position: Vec2, direction: Direction) -> Self {
         Self {
             pos: position,

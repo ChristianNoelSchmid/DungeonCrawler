@@ -48,24 +48,6 @@ static MONSTERS: [Monster; 1] = [
         spawn_chance: 10,
         sight_range: 3,
     },
-    /*Monster {
-        stats: Stats {
-            cur_health: 10,
-            max_health: 10,
-            cur_stamina: 5,
-            max_stamina: 5,
-            cur_magicka: 10,
-            max_magicka: 10,
-        },
-        attrs: Attributes {
-            might: 1,
-            fines: 3,
-            intel: 5,
-        },
-        template_id: 1,
-        name: "Ghost",
-        spawn_chance: 3,
-    },*/
 ];
 
 ///
@@ -100,13 +82,25 @@ impl StateManager {
     }
 }
 
+/// The state loop, ran on a separate thread.
+/// Receives updates from the `EventManager` and adjusts states
+/// accordingly. Runs game logic.
 fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>) {
+
+    // Create the mpsc channels connecting the EventHandler to the StateHandler,
+    // and vice-versa
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
     let (s_to_event, r_at_event) = crossbeam::channel::unbounded();
 
     std::thread::spawn(move || {
+        // The collection of monsters, keyed by position
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
+        // The collection of players, keyed by id
         let mut players = HashMap::<u32, Player>::new();
+        // The collection of AI Managers
+        let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
+
+        // Create the new WorldStage, using the supplied dungeon
         let mut world_stage = WorldStage::new(
             dungeon
                 .paths_ref()
@@ -118,14 +112,8 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
             Vec2::from_tuple(dungeon.exit),
             s_to_event.clone(),
         );
-        let mut ai_managers = HashMap::<u32, IndependentManager<dyn AI>>::new();
 
         loop {
-            /*if let Some(pl) = players.values().next() {
-                println!("pl: {:?}", world_stage.actor(pl.id()).unwrap().tr);
-                println!("mn: {:?}", world_stage.actor(monsters.values().next().unwrap().id()).unwrap().tr);
-            }*/
-            // RequestType Reception
             if let Ok(request) = r_at_state.try_recv() {
                 match request {
                     RequestType::NewPlayer(addr, id, name) => {
