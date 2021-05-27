@@ -1,3 +1,7 @@
+///
+/// A collection of health, magicka, and stamina
+/// including max and current
+///
 #[derive(Debug, Clone, Copy)]
 pub struct Stats {
     pub max_health: u32,
@@ -21,6 +25,10 @@ impl Stats {
     }
 }
 
+///
+/// An entity's might, finesse, and intellect
+/// attributes
+///
 #[derive(Debug, Clone, Copy)]
 pub struct Attributes {
     pub might: u32,

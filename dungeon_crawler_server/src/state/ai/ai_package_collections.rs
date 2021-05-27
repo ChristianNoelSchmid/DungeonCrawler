@@ -1,5 +1,5 @@
 //! Collection of AI Packages that an Entity can run
-//! 
+//!
 //! Christian Schmid 2021
 
 use std::time::{Duration, Instant};
@@ -16,7 +16,7 @@ use crate::{
 
 use super::ai_packages::IndependentPackage;
 
-/// Represents an idle Entity. 
+/// Represents an idle Entity.
 /// Periodically moves Entity to new, close-by position.
 pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
     // Requires that the enemy is not following a target

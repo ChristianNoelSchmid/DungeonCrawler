@@ -128,9 +128,9 @@ pub fn find_shortest_path(world_stage: &WorldStage, start: Vec2, end: Vec2) -> V
     shortest_path
 }
 
-/// Determines which Actors (via) `actor_ids` are
+/// Determines which Actors (via `actor_ids`) are
 /// visible in the entity's current field of view,
-/// via their transform `tr`, by specified `world_stage`
+/// given their `Transform` `tr`, by specified `world_stage`
 /// position and `sight_range`
 pub fn visible_actors(
     world_stage: &mut WorldStage,
@@ -140,6 +140,8 @@ pub fn visible_actors(
 ) -> HashSet<u32> {
     let mut ids = HashSet::new();
 
+    // If the entity is facing left, set their center of view
+    // as PI (-1, 0). Otherwise, set it as 0 (1, 0)
     let (begin, end, center) = if tr.dir == Direction::Left {
         (PI / 2.0, 3.0 * PI / 2.0, PI)
     } else {
@@ -150,9 +152,12 @@ pub fn visible_actors(
     let mut i;
     while f <= end {
         i = 1.0;
-        while i < sight_range as f32
-            && i <= (sight_range as f32 * (MAX_RAD - (center - f).abs()) / MAX_RAD) + 1.0
-        {
+        // Calculate the enemy's potential to see in the given direction, using
+        // their center of view.
+        let angle_factor = (MAX_RAD - (center - f).abs()) / MAX_RAD;
+        // If the enemy can see the given spot, determine if there are any
+        // actor_ids in that spot
+        while i <= (sight_range as f32 * angle_factor) + 1.0 {
             let spot = tr.pos + Vec2((f.cos() * i).round() as i32, (f.sin() * i).round() as i32);
             if !world_stage.is_on_path(spot) {
                 break;

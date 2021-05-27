@@ -15,7 +15,7 @@ pub struct AckResolver {
     last_update_time: Instant,
 }
 
-/// 
+///
 /// Manages a cache of reliable datagrams which have
 /// yet to be acknowledged by the recipient.
 /// Enables reliable, in-order UDP transmission.
@@ -23,7 +23,7 @@ pub struct AckResolver {
 pub struct AckResolverManager {
     // A map of the next rel indices the server
     // will send to a target recipient.
-    next_to: HashMap<SocketAddr, u64>, 
+    next_to: HashMap<SocketAddr, u64>,
     // A map of the next rel indices the server
     // is expecting from target recipients.
     next_from: HashMap<SocketAddr, u64>,
@@ -52,7 +52,7 @@ impl AckResolverManager {
     /// accepts a client ACK datagram.
     pub fn accept_ack(&mut self, addr: SocketAddr, index: u64) {
         let mut pop_back = false; // avoids mutability ownership issues
-        // Retrieve the AckResolver
+                                  // Retrieve the AckResolver
         if let Some(resolver_list) = self.resolvers.get_mut(&addr) {
             if let Some(resolver) = resolver_list.back() {
                 if resolver.index == index {

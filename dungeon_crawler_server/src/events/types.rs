@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use crate::state::{transforms::{
+use crate::state::transforms::{
     transform::{Direction, Transform},
     vec2::Vec2,
-}};
+};
 use simple_serializer::{Deserialize, Serialize};
 
 ///
@@ -12,20 +12,19 @@ use simple_serializer::{Deserialize, Serialize};
 ///
 #[derive(Debug)]
 pub enum Type {
-    Hello(String),              // a client joining the game                         (name)
-    Welcome(u32, String),       // info. the server relays to the client for syncing (id, dun_data)
-    NewPlayer
-        (u32, String, Vec2),    // informs clients of a new Player,                  (id, name, pos)
+    Hello(String),        // a client joining the game                         (name)
+    Welcome(u32, String), // info. the server relays to the client for syncing (id, dun_data)
+    NewPlayer(u32, String, Vec2), // informs clients of a new Player,                  (id, name, pos)
     NewMonster(u32, u32, Vec2), // informs clients of a new Monster                  (temp_id, inst_id, pos)
     Moved(u32, Transform),      // informs server / clients of moved entity          (id, transform)
-    PlayerLeft(u32),            // informs server / clients that a Player has left the server (id)
-    Hit(u32, u32, i32),         // informs clients that a Player has been hit        (attId, defId, healthLeft)
-    Miss(u32, u32),             // informs clients that a Player has been missed     (attId, defId)
-    Dead(u32),                  // informs clients that a Player has died            (id)
-    Escaped(u32),               // informs clients that a Player has escaped         (id)
-    DungeonComplete,            // informs clients that the Dungeon has been completed
-    Reconnect,                  // requests that the clients reconnect - new StateManager
-    Dropped,                    // a dropped packet
+    PlayerLeft(u32),            // informs server / clients that a Player has left   (id)
+    Hit(u32, u32, i32), // informs clients that a Player has been hit        (attId, defId, healthLeft)
+    Miss(u32, u32),     // informs clients that a Player has been missed     (attId, defId)
+    Dead(u32),          // informs clients that a Player has died            (id)
+    Escaped(u32),       // informs clients that a Player has escaped         (id)
+    DungeonComplete,    // informs clients that the Dungeon has been completed
+    Reconnect,          // requests that the clients reconnect - new StateManager
+    Dropped,            // a dropped packet
 }
 
 impl Serialize for Type {
@@ -48,8 +47,8 @@ impl Serialize for Type {
             Type::Miss(att_id, def_id) => format!("Miss::{}::{}", att_id, def_id),
             Type::Dead(id) => format!("Dead::{}", id),
             Type::Escaped(id) => format!("Escaped::{}", id),
-            Type::DungeonComplete => format!("DungeonComplete::"),
-            Type::Reconnect => format!("Reconnect::"),
+            Type::DungeonComplete => "DungeonComplete::".to_string(),
+            Type::Reconnect => "Reconnect::".to_string(),
             Type::Dropped => "Drop".to_string(),
         }
     }

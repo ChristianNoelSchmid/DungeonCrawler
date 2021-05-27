@@ -65,6 +65,7 @@ pub struct SendPacket {
 /// Represents parsed datagram information that
 /// a client has sent.
 ///
+#[derive(Debug, PartialEq, Eq)]
 pub enum ReceivePacket {
     ClientMessage(SocketAddr, String),
     DroppedClient(SocketAddr),

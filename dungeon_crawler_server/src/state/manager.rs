@@ -28,27 +28,25 @@ use super::{
 ///
 /// Template definitions for Monsters
 ///
-static MONSTERS: [Monster; 1] = [
-    Monster {
-        stats: Stats {
-            cur_health: 20,
-            max_health: 20,
-            cur_stamina: 20,
-            max_stamina: 20,
-            cur_magicka: 0,
-            max_magicka: 0,
-        },
-        attrs: Attributes {
-            might: 2,
-            fines: 5,
-            intel: 1,
-        },
-        id: 0,
-        name: "Goblin",
-        spawn_chance: 10,
-        sight_range: 3,
+static MONSTERS: [Monster; 1] = [Monster {
+    stats: Stats {
+        cur_health: 20,
+        max_health: 20,
+        cur_stamina: 20,
+        max_stamina: 20,
+        cur_magicka: 0,
+        max_magicka: 0,
     },
-];
+    attrs: Attributes {
+        might: 2,
+        fines: 5,
+        intel: 1,
+    },
+    id: 0,
+    name: "Goblin",
+    spawn_chance: 10,
+    sight_range: 3,
+}];
 
 ///
 /// Controls all server state, and holds
@@ -86,7 +84,6 @@ impl StateManager {
 /// Receives updates from the `EventManager` and adjusts states
 /// accordingly. Runs game logic.
 fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>) {
-
     // Create the mpsc channels connecting the EventHandler to the StateHandler,
     // and vice-versa
     let (s_to_state, r_at_state) = crossbeam::channel::unbounded();
@@ -113,9 +110,14 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
             s_to_event.clone(),
         );
 
+        // Begin the stateloop, which will not cease until the program ends
         loop {
+            // If there are any requests sent to the StateManager
             if let Ok(request) = r_at_state.try_recv() {
                 match request {
+                    // If a new player has been added, insert them into the
+                    // WorldState and send a StateSnapshot to the EventManager,
+                    // to be forwarded to the player
                     RequestType::NewPlayer(addr, id, name) => {
                         players.insert(id, Player::new(id, name.clone()));
                         world_stage.add(
@@ -159,12 +161,19 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                             }))
                             .unwrap();
                     }
+                    // If a Player has been dropped, remove them from the
+                    // WorldStage and players collection
                     RequestType::DropPlayer(id) => {
+                        world_stage.remove(id);
                         players.remove(&id);
                     }
+                    // If a Player has move, update their
+                    // Transform in the WorldStage
                     RequestType::PlayerMoved(id, new_t) => {
                         world_stage.update_pl_tr(id, new_t);
                     }
+                    // If its been requested to spawn a new monster
+                    // generate a monster and send its information back
                     RequestType::SpawnMonster(id) => {
                         let monster = spawn_monster(id, &mut world_stage);
                         s_to_event
@@ -175,15 +184,24 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                                 world_stage.dir(monster.id()).unwrap(),
                             ))
                             .unwrap();
+                        // Insert the monster's AI package into ai_managers
                         ai_managers.insert(
                             monster.instance_id,
                             IndependentManager::new(vec![&IDLE, &MELEE_COMBAT]),
                         );
                         monsters.insert(world_stage.pos(monster.id()).unwrap(), monster);
                     }
+                    // If the program is ending, break from the loop
                     RequestType::Abort => break,
                 }
             }
+
+            // If there are no players currently connected
+            // do not update enemy AI
+            if players.is_empty() {
+                continue;
+            }
+            // Run each monster's AI
             for monster in monsters.values_mut() {
                 let index = monster.instance_id;
                 ai_managers
@@ -191,34 +209,45 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                     .unwrap()
                     .run(&mut world_stage, monster);
             }
+            // Check if the dungeon is complete. If so,
+            // update the EventManager to inform the connected clients
             if is_dungeon_complete(&mut world_stage, &players) {
-                s_to_event
-                    .send(ResponseType::DungeonComplete)
-                    .unwrap();
+                s_to_event.send(ResponseType::DungeonComplete).unwrap();
                 for pl in players.values() {
                     world_stage.actor(pl.id).unwrap().status = Status::Active;
                 }
-
             }
 
+            // Sleep for 10 milliseconds - generally the logic does not
+            // need to be updated any faster, and this will conserve
+            // processing power
             std::thread::sleep(Duration::from_millis(10));
         }
     });
 
     (s_to_state, r_at_event)
 }
+
+/// Checks if the dungeon is complete by determining if all `players`
+/// are either `Escaped` or `Dead`
 fn is_dungeon_complete(world_stage: &mut WorldStage, players: &HashMap<u32, Player>) -> bool {
-    players.len() > 0 &&
-    players
-        .values()
-        .all(|pl| world_stage.actor(pl.id()).unwrap().status != Status::Active)
+    !players.is_empty()
+        && players
+            .values()
+            .all(|pl| world_stage.actor(pl.id()).unwrap().status != Status::Active)
 }
 
-fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
+/// Generates a single monster at random with the given `id`
+fn spawn_monster(id: u32, world_stage: &mut WorldStage) -> MonsterInstance {
+    // Find the sum of all monster's spawn chances
     let rand_count: u32 = MONSTERS.iter().map(|m| m.spawn_chance).sum();
+
+    // Choose a value in the range of rand_count.
     let mut choice = ((thread_rng().next_u32() % rand_count) + 1) as i32;
     let mut index = 0;
 
+    // Choose the monster based on the value of choice. Subtract each monster's
+    // spawn_chance from choice. When choice hits 0, that particular monster is chosen
     for monster in MONSTERS.iter() {
         choice -= monster.spawn_chance as i32;
         if choice <= 0 {
@@ -227,13 +256,14 @@ fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
         index += 1;
     }
 
-    let open_spot = transformer.open_spot();
-    transformer
+    // Add the MonsterIntance to the WorldStage
+    let open_spot = world_stage.open_spot();
+    world_stage
         .add(
             id,
             Actor::new(
                 id,
-                MONSTERS[index].stats.clone(),
+                MONSTERS[index].stats,
                 MONSTERS[index].attrs,
                 Transform::with_values(open_spot, Direction::Right),
                 ActorId::Monster,
@@ -246,6 +276,7 @@ fn spawn_monster(id: u32, transformer: &mut WorldStage) -> MonsterInstance {
 
 impl Drop for StateManager {
     fn drop(&mut self) {
+        // Drop the state thread when the application quits
         self.s_to_state.send(RequestType::Abort).unwrap();
     }
 }

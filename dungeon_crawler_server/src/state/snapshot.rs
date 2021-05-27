@@ -2,10 +2,13 @@ use dungeon_generator::inst::Dungeon;
 
 use std::net::SocketAddr;
 
-use super::{
-    transforms::{transform::Transform, vec2::Vec2},
-};
+use super::transforms::{transform::Transform, vec2::Vec2};
 
+///
+/// Represents a snapshot in time of the current state of a
+/// `StateManager`. Used to synchronize a new `Player` with the
+/// current state of the game
+///
 pub struct StateSnapshot {
     pub addr_for: SocketAddr,
     pub new_player: (u32, String, Vec2),

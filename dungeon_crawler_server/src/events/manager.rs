@@ -22,7 +22,7 @@ use crate::{
 pub struct EventManager {
     // The state manager, which handles all the server's
     // world state
-    state_manager: StateManager, 
+    state_manager: StateManager,
 
     // The PacketSender / Receiver associated with the
     // DatagramManager used to retrieve client packets.
@@ -134,7 +134,7 @@ impl EventManager {
                 self.id_next += 1;
             }
             // If a client's position has moved, update the StateManager,
-            // and 
+            // and
             Type::Moved(id, transform) => {
                 // If Moved, update in state and send to other clients
                 if self.addrs.contains_key(&addr) {
@@ -237,7 +237,7 @@ impl EventManager {
                     .send(SendPacket {
                         addrs: self.all_addrs(),
                         is_rel: true,
-                        msg: Type::Reconnect.serialize()
+                        msg: Type::Reconnect.serialize(),
                     })
                     .unwrap();
 
@@ -245,7 +245,7 @@ impl EventManager {
                     self.s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
                 }
 
-                self.id_next += 10; 
+                self.id_next += 10;
             }
             _ => {}
         }

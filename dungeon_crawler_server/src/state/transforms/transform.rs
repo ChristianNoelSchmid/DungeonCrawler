@@ -6,7 +6,7 @@ use super::vec2::Vec2;
 
 ///
 /// Represents an Entity's facing direction
-/// 
+///
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Left,

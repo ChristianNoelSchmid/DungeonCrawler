@@ -5,7 +5,7 @@ use super::{
     transforms::vec2::Vec2,
 };
 
-/// 
+///
 /// Represents an entity's ability to be
 /// defined separately from all other entities.
 ///
@@ -34,7 +34,7 @@ pub trait Translator: Identified {
     fn next_step(&mut self) -> Option<Vec2>;
 }
 
-/// 
+///
 /// Defines an entity which has `Stats` and `Attributes`.
 ///
 pub trait Qualities {

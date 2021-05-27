@@ -17,11 +17,14 @@ pub enum Status {
 impl Serialize for Status {
     type SerializeTo = String;
     fn serialize(&self) -> Self::SerializeTo {
-        format!("{}", match self {
-            Status::Active=> 0,
-            Status::Dead => 1,
-            Status::Escaped => 2,
-        })
+        format!(
+            "{}",
+            match self {
+                Status::Active => 0,
+                Status::Dead => 1,
+                Status::Escaped => 2,
+            }
+        )
     }
 }
 
@@ -66,7 +69,7 @@ pub enum ActorId {
 }
 
 impl ActorId {
-    pub fn all_but<'a>(actor_id: ActorId) -> Vec<ActorId> {
+    pub fn all_but(actor_id: ActorId) -> Vec<ActorId> {
         ACTOR_IDS
             .iter()
             .filter(|id| *id != &actor_id)

@@ -4,18 +4,26 @@ use crate::state::{
 };
 use simple_serializer::Serialize;
 
+use super::traits::Qualities;
+
 ///
-/// Represents a Player in the state
+/// Represents a Player in the StateManager
 ///
 #[derive(Debug, Clone)]
 pub struct Player {
+    pub name: String,
+
+    // Identified
+    pub id: u32,
+
+    // Qualities
     stats: Stats,
     attrs: Attributes,
-    pub id: u32,
-    pub name: String,
 }
 
 impl Player {
+    /// Creates a new Player with the given unique `id`
+    /// and `name`
     pub fn new(id: u32, name: String) -> Self {
         Self {
             stats: Stats::new(20, 10, 10),
@@ -29,6 +37,16 @@ impl Player {
 impl Identified for Player {
     fn id(&self) -> u32 {
         self.id
+    }
+}
+
+impl Qualities for Player {
+    fn stats(&mut self) -> &mut Stats {
+        &mut self.stats
+    }
+
+    fn attrs(&self) -> &Attributes {
+        &self.attrs
     }
 }
 

@@ -14,9 +14,9 @@ use super::{
     vec2::Vec2,
 };
 
-/// 
+///
 /// A representation of the entire physical layout of the level,
-/// with Actor data. 
+/// with Actor data.
 ///
 #[derive(Clone, Debug)]
 
@@ -37,9 +37,14 @@ pub struct WorldStage {
 }
 
 impl WorldStage {
-    /// Creates a new `WorldStage` with the specified `paths`, 
+    /// Creates a new `WorldStage` with the specified `paths`,
     /// `entrance` and `exit` points, and `Sender` `s_to_event`.
-    pub fn new(paths: HashSet<Vec2>, entrance: Vec2, exit: Vec2, s_to_event: Sender<ResponseType>) -> Self {
+    pub fn new(
+        paths: HashSet<Vec2>,
+        entrance: Vec2,
+        exit: Vec2,
+        s_to_event: Sender<ResponseType>,
+    ) -> Self {
         Self {
             actors: HashMap::new(),
             paths,
@@ -82,7 +87,6 @@ impl WorldStage {
     /// Does **not** send the change to the `EventManager`, as that's handled
     /// separately. Returns false if the position of `new_t` is already filled.
     pub fn update_pl_tr(&mut self, id: u32, new_t: Transform) -> bool {
-        
         // If the spot is filled, return false
         if !self.is_spot_open(new_t.pos) {
             false
@@ -123,7 +127,6 @@ impl WorldStage {
     /// Updates the position of an `Actor` with the given `id`,
     /// with `new_pos`, if the Actor exists.
     pub fn move_pos(&mut self, id: u32, new_pos: Vec2) -> bool {
-
         // If the spot is filled, return false
         if !self.is_spot_open(new_pos) {
             return false;
@@ -168,11 +171,11 @@ impl WorldStage {
     pub fn look_at(&mut self, id: u32, pos: Vec2) -> bool {
         if let Some(actor) = self.actors.get_mut(&id) {
             let mut dir = actor.tr.dir;
-            if actor.tr.pos.0 < pos.0 {
-                dir = Direction::Right;
-            } else if actor.tr.pos.0 > pos.0 {
-                dir = Direction::Left;
-            }
+            dir = match actor.tr.pos.0 {
+                x if x < pos.0 => Direction::Right,
+                x if x > pos.0 => Direction::Left,
+                _ => dir,
+            };
 
             actor.tr.dir = dir;
             return true;

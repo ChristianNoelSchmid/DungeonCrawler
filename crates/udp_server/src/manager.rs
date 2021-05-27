@@ -189,7 +189,6 @@ impl DatagramManager {
                     let buf = &buf[..amt];
                     let msg = String::from_utf8(buf.to_vec()).unwrap();
                     let datagram = Type::deserialize(&msg);
-                    println!("{:?}", datagram);
 
                     client_ping_times.insert(addr, Instant::now());
 
