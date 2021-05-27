@@ -33,11 +33,20 @@ mod event_handler_tests {
     #[test]
     fn test_new_player() {
         let (dgm, evt_addr) = gen_managers(3000, 3001);
-        let (s, r) = dgm.get_sender_receiver();
+        let (s1, r1) = dgm.get_sender_receiver();
+        let (s2, r2) = DatagramManager::new(3004).unwrap().get_sender_receiver();
 
-        s.send(SendPacket {
+        s2.send(SendPacket {
             addrs: vec![evt_addr],
-            is_rel: false,
+            is_rel: true,
+            msg: Type::Hello("Sam".to_string()).serialize(),
+        })
+        .unwrap();
+        thread::sleep(Duration::from_secs_f32(1.5));
+
+        s1.send(SendPacket {
+            addrs: vec![evt_addr],
+            is_rel: true,
             msg: Type::Hello("Phil".to_string()).serialize(),
         })
         .unwrap();
@@ -46,7 +55,7 @@ mod event_handler_tests {
         assert!(loop {
             if Instant::now() - now > Duration::from_secs(3) {
                 break false;
-            } else if let Ok(ClientMessage(_, msg)) = r.try_recv() {
+            } else if let Ok(ClientMessage(_, msg)) = r1.try_recv() {
                 if msg.starts_with("Welcome::") {
                     break true;
                 }
