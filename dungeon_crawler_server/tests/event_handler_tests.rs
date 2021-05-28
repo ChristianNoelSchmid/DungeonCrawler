@@ -34,7 +34,7 @@ mod event_handler_tests {
     fn test_new_player() {
         let (dgm, evt_addr) = gen_managers(3000, 3001);
         let (s1, r1) = dgm.get_sender_receiver();
-        let (s2, r2) = DatagramManager::new(3004).unwrap().get_sender_receiver();
+        let (s2, _) = DatagramManager::new(3004).unwrap().get_sender_receiver();
 
         s2.send(SendPacket {
             addrs: vec![evt_addr],
