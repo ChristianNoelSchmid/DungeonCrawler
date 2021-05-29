@@ -148,6 +148,9 @@ impl EventManager {
                     });
                 }
             }
+            Type::AttemptHit(attk_id, defd_id) => {
+                self.s_to_state.send(RequestType::AttemptHit(attk_id, defd_id)).unwrap();
+            }
             _ => {}
         };
         snd_packets
@@ -182,6 +185,15 @@ impl EventManager {
                         addrs: self.all_addrs(),
                         is_rel: false,
                         msg: Type::Charging(id).serialize(),
+                    })
+                    .unwrap();
+            }
+            ResponseType::AttkTowards(id, pos) => {
+                self.s_to_clients
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: false,
+                        msg: Type::AttkTowards(id, pos).serialize(),
                     })
                     .unwrap();
             }

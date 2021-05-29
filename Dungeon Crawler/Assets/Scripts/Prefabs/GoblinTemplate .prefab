@@ -10,9 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 2103885757095430126}
   - component: {fileID: 9155895081076140792}
+  - component: {fileID: 1904467931059386681}
   - component: {fileID: 1482189612007032508}
   - component: {fileID: 1616280807105664397}
   - component: {fileID: 6354850128179928717}
+  - component: {fileID: -8162995117372397155}
   m_Layer: 0
   m_Name: 'GoblinTemplate '
   m_TagString: Untagged
@@ -55,6 +57,18 @@ Animator:
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorControllerStateOnDisable: 0
+--- !u!114 &1904467931059386681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103885757095430120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a46339d5dd82c049bb2dfcba1bd5a4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &1482189612007032508
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93,6 +107,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6c83e26a6ab17446956904075861302, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &-8162995117372397155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103885757095430120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79a60a193c841304a9dc2b34295f4dbd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _range: 0
+  _intensity: 0
 --- !u!1 &6234071108139631316
 GameObject:
   m_ObjectHideFlags: 0

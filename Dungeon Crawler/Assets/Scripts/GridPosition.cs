@@ -36,17 +36,17 @@ namespace DungeonCrawler.Monobehaviours
 
         private void Awake() => _transform = transform;
         
-        public PositionModel ToPositionModel() => new PositionModel
+        public TransformModel ToTransformModel() => new TransformModel
         {
             X = Value.x,
             Y = Value.y,
             Direction = Direction
         };
 
-        public void FromPositionModel(PositionModel position)
+        public void FromTransformModel(TransformModel transform)
         {
-            Value = new Vector2Int(position.X, position.Y);
-            Direction = position.Direction;
+            Value = new Vector2Int(transform.X, transform.Y);
+            Direction = transform.Direction;
         }
     }
 }

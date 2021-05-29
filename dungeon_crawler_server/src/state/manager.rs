@@ -191,6 +191,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                         );
                         monsters.insert(world_stage.pos(monster.id()).unwrap(), monster);
                     }
+                    RequestType::AttemptHit(attk_id, defd_id) => world_stage.try_attk(attk_id, defd_id),
                     // If the program is ending, break from the loop
                     RequestType::Abort => break,
                 }
@@ -204,10 +205,12 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
             // Run each monster's AI
             for monster in monsters.values_mut() {
                 let index = monster.instance_id;
-                ai_managers
-                    .get_mut(&index)
-                    .unwrap()
-                    .run(&mut world_stage, monster, &s_to_event);
+                if world_stage.actor(index).unwrap().status != Status::Dead {
+                    ai_managers
+                        .get_mut(&index)
+                        .unwrap()
+                        .run(&mut world_stage, monster, &s_to_event);
+                }
             }
             // Check if the dungeon is complete. If so,
             // update the EventManager to inform the connected clients

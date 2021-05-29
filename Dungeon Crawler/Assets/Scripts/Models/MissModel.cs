@@ -10,6 +10,6 @@ namespace DungeonCrawler.Models
 
         // The client never sends a Miss datagram, so
         // Serialize is simply implemented
-        public string Serialize() => "";
+        public string Serialize() => $"{DefenderId}";
     }
 }

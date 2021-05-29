@@ -240,14 +240,7 @@ impl WorldStage {
     }
 
     /// Performs an 'attack' from the `attk_id` `Actor` to `defd_id` `Actor`.
-    pub fn attk(&mut self, attk_id: u32, defd_id: u32, missed: bool) {
-        if missed {
-            self.s_to_event
-                .send(ResponseType::Miss(attk_id, defd_id))
-                .unwrap();
-            return;
-        }
-
+    pub fn try_attk(&mut self, attk_id: u32, defd_id: u32) {
         // Retrieve the attacker and defender Actors
         // and the attacker's attack damage (might stat)
         let attacker = &self.actors[&attk_id];

@@ -16,6 +16,7 @@ pub enum RequestType {
     DropPlayer(u32),                    // (id)
     PlayerMoved(u32, Transform),        // (id, player transform)
     SpawnMonster(u32),                  // (id)
+    AttemptHit(u32, u32),
     Abort,
 }
 
@@ -30,6 +31,7 @@ pub enum ResponseType {
     Charging(u32),
     Hit(u32, u32, i32),                    // (attk_id, defd_id, defd health left)
     Miss(u32, u32),                        // (attk_id, defd_id)
+    AttkTowards(u32, Vec2),                // (pos)
     Dead(u32),                             // (id)
     Escaped(u32),                          // (id)
     DungeonComplete,

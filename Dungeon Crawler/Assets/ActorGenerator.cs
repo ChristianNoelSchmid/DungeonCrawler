@@ -21,28 +21,29 @@ namespace DungeonCrawler.Monobehaviours
 
         private Dictionary<int, GridPosition> _actorPositions;
         private Dictionary<int, string> _playerNames;
-        private Dictionary<int, ActorStatus> _playerStatuses;
+        private Dictionary<int, ActorStatus> _actorStatuses;
         private HashSet<int> _playerIds;
 
         private int _clientPlayerId;
+        public int ClientPlayerId => _clientPlayerId;
 
         private void Awake()
         {
             _actorPositions = new Dictionary<int, GridPosition>();
             _playerNames = new Dictionary<int, string>();
-            _playerStatuses = new Dictionary<int, ActorStatus>();
+            _actorStatuses = new Dictionary<int, ActorStatus>();
             _playerIds = new HashSet<int>();
         }
 
         private readonly WaitForEndOfFrame _waitForEndOfFrame = new WaitForEndOfFrame();
 
-        public void UpdatePosition(int id, PositionModel position)
+        public void UpdatePosition(int id, TransformModel transform)
         {
             // Because the server may not have sent the client the new
             // monster before sending a move update, it must be checked
             if (_actorPositions.ContainsKey(id))
             {
-                _actorPositions[id].FromPositionModel(position);
+                _actorPositions[id].FromTransformModel(transform);
                 if(Obstacles.UpdateObstacle(_actorPositions[id].transform, _actorPositions[id].Value))
                 {
                     _actorPositions[id].GetComponent<Animator>().SetTrigger("Move");
@@ -54,7 +55,7 @@ namespace DungeonCrawler.Monobehaviours
             _clientPlayerId = id;
             _actorPositions[id] = position;
             _playerNames[id] = name;
-            _playerStatuses[id] = position.GetComponent<ActorStatus>();
+            _actorStatuses[id] = position.GetComponent<ActorStatus>();
             _playerIds.Add(id);
         }
 
@@ -67,11 +68,11 @@ namespace DungeonCrawler.Monobehaviours
                     .GetComponent<GridPosition>()
             );
             _playerNames[player.Id] = player.Name;
-            _playerStatuses[player.Id] = playerPos.GetComponent<ActorStatus>();
-            _playerStatuses[player.Id].Status = player.Status;
+            _actorStatuses[player.Id] = playerPos.GetComponent<ActorStatus>();
+            _actorStatuses[player.Id].Status = player.Status;
             _playerIds.Add(player.Id);
 
-            UpdatePosition(player.Id, playerPos.ToPositionModel());
+            UpdatePosition(player.Id, playerPos.ToTransformModel());
         }
         public void SpawnMonster(MonsterInstance monster)
         {
@@ -85,7 +86,10 @@ namespace DungeonCrawler.Monobehaviours
                     .GetComponent<GridPosition>()
             );
 
-            UpdatePosition(instanceId, monsterPosition.ToPositionModel());
+            _actorStatuses[instanceId] = monsterPosition.GetComponent<ActorStatus>();
+            _actorStatuses[instanceId].Status = Status.Active;
+
+            UpdatePosition(instanceId, monsterPosition.ToTransformModel());
         }
         public void RemoveById(int id)
         {
@@ -124,14 +128,24 @@ namespace DungeonCrawler.Monobehaviours
 
         }
 
-        public void MissOther(int attId, int defId)
+        public void MissOther(int attId, int defId) => HitOther(attId, defId);
+        public void AttackTowards(int attId, Vector2Int pos)
         {
-            HitOther(attId, defId);
+           var dir = _actorPositions[attId].Value - pos;
+            StartCoroutine(AttackAnim(
+                attId,
+                (dir.x, dir.y) switch
+                {
+                    (0, -1) => 1,
+                    (0, 1) => 2,
+                    _ => 4,
+                }
+            )); 
         }
 
         public void KillActor(int id)
         {
-            if (_playerStatuses.TryGetValue(id, out var status))
+            if (_actorStatuses.TryGetValue(id, out var status))
             {
                 status.Status = Status.Dead;
                 Obstacles.RemoveObstacle(status.transform);
@@ -140,7 +154,7 @@ namespace DungeonCrawler.Monobehaviours
 
         public void EscapeActor(int id)
         {
-            if (_playerStatuses.TryGetValue(id, out var status))
+            if (_actorStatuses.TryGetValue(id, out var status))
             {
                 status.Status = Status.Escaped;
                 Obstacles.RemoveObstacle(status.transform);
@@ -150,7 +164,7 @@ namespace DungeonCrawler.Monobehaviours
         public ReadOnlyCollection<Tuple<ActorStatus, string>> GetPlayers()
         {
             return _playerIds
-                .Select(id => Tuple.Create(_playerStatuses[id], _playerNames[id]))
+                .Select(id => Tuple.Create(_actorStatuses[id], _playerNames[id]))
                 .ToList()
                 .AsReadOnly();
         }
@@ -166,7 +180,7 @@ namespace DungeonCrawler.Monobehaviours
             }
 
             _actorPositions.Clear();
-            _playerStatuses.Clear();
+            _actorStatuses.Clear();
             _playerNames.Clear();
             _playerIds.Clear();
         }
@@ -175,6 +189,17 @@ namespace DungeonCrawler.Monobehaviours
         {
             var animator = _actorPositions[id].GetComponent<Animator>();
             animator.SetTrigger("Charging");
+        }
+
+        public int NonPlayerAt(Vector2Int pos)
+        {
+            if(_actorPositions.Any(a => a.Value.Value == pos))
+            {
+                var defdId = _actorPositions.Single(a => a.Value.Value == pos).Key;
+                if(!_playerIds.Contains(defdId))
+                    return defdId;
+            }
+            return -1;
         }
     }
 }

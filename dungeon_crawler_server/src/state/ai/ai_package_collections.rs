@@ -77,7 +77,7 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
         // in its view.
         let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
         let target_id = entity.follow_target().unwrap();
-        let follow_target_pos = *entity.target().unwrap();
+        let follow_target_pos = entity.target().copied();
         let target_tr = world_stage.actor(target_id).unwrap().tr;
 
         // Retrieve the targets currently in sight of the Entity
@@ -96,18 +96,20 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
             match entity.charge_attk() {
                 AttackStatus::Charged => {
                     if ent_tr.pos.distance(target_tr.pos) <= 1.0 {
-                        world_stage.attk(entity.id(), target_id, false);
+                        world_stage.try_attk(entity.id(), target_id);
                     } else {
-                        world_stage.attk(entity.id(), target_id, true);
-                        world_stage.move_pos(entity.id(), follow_target_pos);
+                        if let Some(pos) = follow_target_pos {
+                            s_to_event.send(ResponseType::AttkTowards(entity.id(), pos)).unwrap();
+                            world_stage.move_pos(entity.id(), pos);
+                        }
                     }
                     return AIPackageResult::Continue;
                 },
                 AttackStatus::Charging => {
-                    s_to_event.send(ResponseType::Charging(entity.id())).unwrap();
                     return AIPackageResult::Continue;   
                 },
                 AttackStatus::BegunCharging => {
+                    s_to_event.send(ResponseType::Charging(entity.id())).unwrap();
                     return AIPackageResult::Continue;
                 },
                 AttackStatus::NotReady => {

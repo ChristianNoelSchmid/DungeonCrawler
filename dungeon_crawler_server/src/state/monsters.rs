@@ -133,7 +133,7 @@ impl Combater for MonsterInstance {
     fn charge_attk(&mut self) -> AttackStatus {
         if let Some(attk) = self.charge_attk {
             match Instant::now() - attk {
-                n if n > Duration::from_millis(1000) => {
+                n if n > Duration::from_millis(750) => {
                     self.charge_attk = None;
                     return AttackStatus::Charged;
                 },
@@ -145,7 +145,7 @@ impl Combater for MonsterInstance {
                         return AttackStatus::Charging;
                     }
                 },
-                _ => { }
+                _ => self.charging = false,
             }
         } else {
             self.charge_attk = Some(Instant::now());
@@ -155,6 +155,7 @@ impl Combater for MonsterInstance {
     }
     fn reset_attk(&mut self) {
         self.charge_attk = None;
+        self.charging = false;
     }
 }
 

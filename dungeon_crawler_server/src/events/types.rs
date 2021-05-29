@@ -19,6 +19,8 @@ pub enum Type {
     Moved(u32, Transform),      // informs server / clients of moved entity          (id, transform)
     PlayerLeft(u32),            // informs server / clients that a Player has left   (id)
     Charging(u32),
+    AttemptHit(u32, u32),
+    AttkTowards(u32, Vec2),
     Hit(u32, u32, i32), // informs clients that a Player has been hit        (attId, defId, healthLeft)
     Miss(u32, u32),     // informs clients that a Player has been missed     (attId, defId)
     Dead(u32),          // informs clients that a Player has died            (id)
@@ -42,7 +44,9 @@ impl Serialize for Type {
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
             Type::PlayerLeft(id) => format!("PlayerLeft::{}", id),
+            Type::AttkTowards(id, pos) => format!("AttkTowards::{}::{}", id, pos.serialize()),
             Type::Charging(id) => format!("Charging::{}", id),
+            Type::AttemptHit(attk_id, defd_id) => format!("AttemptHit::{}::{}", attk_id, defd_id),
             Type::Hit(att_id, def_id, cur_health) => {
                 format!("Hit::{}::{}::{}", att_id, def_id, cur_health)
             }
@@ -84,7 +88,16 @@ impl Deserialize for Type {
                     ),
                     _ => Type::Dropped,
                 }
-            }
+            },
+            "AttemptHit" => {
+                match(
+                    u32::from_str(segs[1]),
+                    u32::from_str(segs[2]),
+                ) {
+                    (Ok(attk_id), Ok(defd_id)) => Type::AttemptHit(attk_id, defd_id),
+                    _ => Type::Dropped,
+                }
+            },
             _ => Type::Dropped,
         }
     }

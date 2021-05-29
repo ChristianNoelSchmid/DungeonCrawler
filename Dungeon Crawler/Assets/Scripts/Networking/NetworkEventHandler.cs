@@ -113,10 +113,10 @@ namespace DungeonCrawler.Networking
                     _datagramHandler.SendDatagram(
                         new Moved
                         {
-                            Model = new DataModel<PositionModel>
+                            Model = new DataModel<TransformModel>
                             {
                                 Id = _playerId,
-                                Value = _playerPosition.ToPositionModel()
+                                Value = _playerPosition.ToTransformModel()
                             }
                         }.CreateString(),
                         false
@@ -147,6 +147,7 @@ namespace DungeonCrawler.Networking
                     "NewMonster" =>      new NewMonster(args),
                     "PlayerLeft" =>      new PlayerLeft(args),
                     "Charging"   =>      new Charging(args),
+                    "AttkTowards"=>      new AttkTowards(args),
                     "Hit"        =>      new Hit(args),
                     "Miss"       =>      new Miss(args),
                     "Moved"      =>      new Moved(args),
@@ -198,7 +199,7 @@ namespace DungeonCrawler.Networking
 
                 case Moved moved:
                     if(moved.Model.Id == _playerId)
-                        _playerPosition.FromPositionModel(moved.Model.Value);
+                        _playerPosition.FromTransformModel(moved.Model.Value);
                     else
                         _actorGen.UpdatePosition(moved.Model.Id, moved.Model.Value);
                     break;
@@ -254,6 +255,10 @@ namespace DungeonCrawler.Networking
                         new Hello { Player = new Player { Name = _playerName } }.CreateString(),
                         true
                     );
+                    break;
+
+                case AttkTowards towards:
+                    _actorGen.AttackTowards(towards.Model.Id, towards.Model.Value.ToVector2Int());
                     break;
             }
         }
