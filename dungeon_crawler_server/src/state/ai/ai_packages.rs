@@ -5,7 +5,9 @@
 //! Christian Schmid - May, 2021
 //!
 
-use crate::state::transforms::world_stage::WorldStage;
+use crossbeam::channel::Sender;
+
+use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
 use std::time::Duration;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -38,7 +40,7 @@ pub struct IndependentPackage<Entity: ?Sized> {
     ///
     /// An increment in the `Entity`'s AI system
     ///
-    pub step_next: fn(&mut WorldStage, entity: &mut Entity) -> AIPackageResult,
+    pub step_next: fn(&mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>) -> AIPackageResult,
 
     ///
     /// The amount of time the `AIPackage` will run

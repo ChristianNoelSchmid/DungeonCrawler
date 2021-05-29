@@ -207,7 +207,7 @@ fn state_loop(dungeon: Dungeon) -> (Sender<RequestType>, Receiver<ResponseType>)
                 ai_managers
                     .get_mut(&index)
                     .unwrap()
-                    .run(&mut world_stage, monster);
+                    .run(&mut world_stage, monster, &s_to_event);
             }
             // Check if the dungeon is complete. If so,
             // update the EventManager to inform the connected clients

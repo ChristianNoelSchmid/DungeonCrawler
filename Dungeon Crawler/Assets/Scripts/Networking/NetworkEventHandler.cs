@@ -8,6 +8,7 @@ using DungeonCrawler.Models;
 using DungeonCrawler.Networking.NetworkEvents;
 using DungeonCrawler.Monobehaviours;
 using System.Threading;
+using Assets.Scripts.Networking.NetworkEvents;
 
 namespace DungeonCrawler.Networking
 {
@@ -145,6 +146,7 @@ namespace DungeonCrawler.Networking
                     "NewPlayer"  =>      new NewPlayer(args),
                     "NewMonster" =>      new NewMonster(args),
                     "PlayerLeft" =>      new PlayerLeft(args),
+                    "Charging"   =>      new Charging(args),
                     "Hit"        =>      new Hit(args),
                     "Miss"       =>      new Miss(args),
                     "Moved"      =>      new Moved(args),
@@ -203,6 +205,10 @@ namespace DungeonCrawler.Networking
 
                 case PlayerLeft left: // On PlayerLeft, remove the Client's marker from the PlayerConnections
                     _actorGen.RemoveById(left.Model.Id); 
+                    break;
+
+                case Charging charging:
+                    _actorGen.ChargeAttack(charging.Model.Id);
                     break;
 
                 case Hit hit:

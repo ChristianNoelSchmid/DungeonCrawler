@@ -6,13 +6,7 @@ use std::time::{Duration, Instant};
 
 use rand::{prelude::IteratorRandom, thread_rng};
 
-use crate::{
-    astar::{find_shortest_path, visible_actors},
-    state::{
-        actor::ActorId, ai::ai_packages::AIPackageResult, traits::AI,
-        transforms::world_stage::WorldStage,
-    },
-};
+use crate::{astar::{find_shortest_path, visible_actors}, state::{actor::ActorId, ai::ai_packages::AIPackageResult, traits::{AI, AttackStatus}, transforms::world_stage::WorldStage, types::ResponseType}};
 
 use super::ai_packages::IndependentPackage;
 
@@ -30,7 +24,7 @@ pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
     },
     // For each step, traverse to target. If the Entity
     // sees a Player, engage in combat
-    step_next: |world_stage, entity| {
+    step_next: |world_stage, entity, _| {
         let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
         let vis_pls = visible_actors(
             world_stage,
@@ -78,12 +72,14 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
     },
     // For each step, approach the target if visible. If not within 3 seconds
     // disengage combat.
-    step_next: |world_stage, entity| {
+    step_next: |world_stage, entity, s_to_event| {
         // Get the entity transform, and check if there are any visible players
         // in its view.
         let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
         let target_id = entity.follow_target().unwrap();
+        let follow_target_pos = *entity.target().unwrap();
         let target_tr = world_stage.actor(target_id).unwrap().tr;
+
         // Retrieve the targets currently in sight of the Entity
         let targets_in_sight = visible_actors(
             world_stage,
@@ -97,11 +93,30 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
         // to target.
         if targets_in_sight.contains(&target_id) {
             entity.reset_last_sighting();
-            if ent_tr.pos.distance(target_tr.pos) <= 1.0 {
-                if entity.charge_attk() {
-                    world_stage.attk(entity.id(), target_id);
-                }
-                return AIPackageResult::Continue;
+            match entity.charge_attk() {
+                AttackStatus::Charged => {
+                    if ent_tr.pos.distance(target_tr.pos) <= 1.0 {
+                        world_stage.attk(entity.id(), target_id, false);
+                    } else {
+                        world_stage.attk(entity.id(), target_id, true);
+                        world_stage.move_pos(entity.id(), follow_target_pos);
+                    }
+                    return AIPackageResult::Continue;
+                },
+                AttackStatus::Charging => {
+                    s_to_event.send(ResponseType::Charging(entity.id())).unwrap();
+                    return AIPackageResult::Continue;   
+                },
+                AttackStatus::BegunCharging => {
+                    return AIPackageResult::Continue;
+                },
+                AttackStatus::NotReady => {
+                    if ent_tr.pos.distance(target_tr.pos) > 1.0 {
+                        entity.reset_attk();
+                    } else {
+                        return AIPackageResult::Continue;
+                    }
+                },
             }
         } else {
             entity.reset_attk();

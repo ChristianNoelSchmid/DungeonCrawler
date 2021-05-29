@@ -8,21 +8,20 @@ namespace DungeonCrawler.Monobehaviours
     {
         private static LightGenerator _generator;
         private GridPosition _position;
-        private SpriteRenderer _renderer;
-        private Color _originalColor;
+        private SpriteRenderer[] _renderers;
         void Awake()
         {
             if(_generator ==  null)
-                _generator = GameObject.FindObjectOfType<LightGenerator>();
+                _generator = FindObjectOfType<LightGenerator>();
 
-            _renderer = GetComponentInChildren<SpriteRenderer>();
+            _renderers = GetComponentsInChildren<SpriteRenderer>();
             _position = GetComponent<GridPosition>();
-            _originalColor = _renderer.color;
         }
         void Update()
         {
             float brightness = _generator.SquareBrightness(_position.Value);
-            _renderer.color = Color.Lerp(Color.black, _originalColor, brightness);
+            for(int i = 0; i < _renderers.Length; ++i)
+                _renderers[i].color = Color.Lerp(Color.black, Color.white, brightness);
         }
     }
 }

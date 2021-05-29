@@ -1,22 +1,13 @@
 fileFormatVersion: 2
-guid: 86dac05b18435444282e414dbe29c6d8
+guid: 8bf01abb4ae0ce040924c345463e041b
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8027329798746834875
-    second: goblin-aly_0
+      213: 2389193319765324094
+    second: shield_0
   - first:
-      213: 1808742085071151140
-    second: goblin-aly_1
-  - first:
-      213: 5797602931290878747
-    second: goblin-aly_2
-  - first:
-      213: 446341016997634441
-    second: goblin-aly_3
-  - first:
-      213: -4959545254738606612
-    second: goblin-aly_4
+      213: 5085415284296604745
+    second: shield_1
   externalObjects: {}
   serializedVersion: 11
   mipmaps:
@@ -59,8 +50,8 @@ TextureImporter:
   spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 9
-  spritePivot: {x: 0.5, y: 0.4814815}
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 27
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
@@ -106,106 +97,43 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: goblin-aly_0
+      name: shield_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 2
-        width: 21
-        height: 27
+        y: 1
+        width: 11
+        height: 11
       alignment: 9
-      pivot: {x: 0.47619048, y: 0.5185185}
+      pivot: {x: 0.09090909, y: 1}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bb7863ddbedc66f60800000000000000
-      internalID: 8027329798746834875
+      spriteID: e3139547aae182120800000000000000
+      internalID: 2389193319765324094
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: goblin-aly_1
+      name: shield_1
       rect:
         serializedVersion: 2
-        x: 22
-        y: 2
-        width: 23
-        height: 27
-      alignment: 9
-      pivot: {x: 0.47826087, y: 0.5185185}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 42027fed751f91910800000000000000
-      internalID: 1808742085071151140
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_2
-      rect:
-        serializedVersion: 2
-        x: 46
-        y: 2
-        width: 24
-        height: 27
-      alignment: 9
-      pivot: {x: 0.5, y: 0.5185185}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: b133b542629357050800000000000000
-      internalID: 5797602931290878747
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_3
-      rect:
-        serializedVersion: 2
-        x: 71
-        y: 2
-        width: 21
-        height: 28
-      alignment: 9
-      pivot: {x: 0.5714286, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 981a4d64ac8b13600800000000000000
-      internalID: 446341016997634441
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_4
-      rect:
-        serializedVersion: 2
-        x: 94
+        x: 12
         y: 0
-        width: 21
-        height: 29
+        width: 6
+        height: 12
       alignment: 9
-      pivot: {x: 0.5714286, y: 0.51724136}
+      pivot: {x: -1, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ce5c4db1ed72c2bb0800000000000000
-      internalID: -4959545254738606612
+      spriteID: 94c57d3e146039640800000000000000
+      internalID: 5085415284296604745
       vertices: []
       indices: 
       edges: []

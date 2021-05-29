@@ -8,7 +8,7 @@ use crate::state::{
     transforms::vec2::Vec2,
 };
 
-use super::traits::Combater;
+use super::traits::{AttackStatus, Combater};
 
 ///
 /// Represents a particular monster type
@@ -58,6 +58,7 @@ pub struct MonsterInstance {
 
     // Combator
     charge_attk: Option<Instant>,
+    charging: bool,
 }
 
 impl MonsterInstance {
@@ -73,6 +74,7 @@ impl MonsterInstance {
 
             charge_step: None,
             charge_attk: None,
+            charging: false,
         }
     }
 }
@@ -128,16 +130,28 @@ impl Follower for MonsterInstance {
 }
 
 impl Combater for MonsterInstance {
-    fn charge_attk(&mut self) -> bool {
+    fn charge_attk(&mut self) -> AttackStatus {
         if let Some(attk) = self.charge_attk {
-            if Instant::now() - attk > Duration::from_millis(750) {
-                self.charge_attk = None;
-                return true;
+            match Instant::now() - attk {
+                n if n > Duration::from_millis(1000) => {
+                    self.charge_attk = None;
+                    return AttackStatus::Charged;
+                },
+                n if n > Duration::from_millis(250) => {
+                    if !self.charging {
+                        self.charging = true;
+                        return AttackStatus::BegunCharging;
+                    } else {
+                        return AttackStatus::Charging;
+                    }
+                },
+                _ => { }
             }
         } else {
             self.charge_attk = Some(Instant::now());
+            self.charging = false;
         }
-        false
+        AttackStatus::NotReady
     }
     fn reset_attk(&mut self) {
         self.charge_attk = None;

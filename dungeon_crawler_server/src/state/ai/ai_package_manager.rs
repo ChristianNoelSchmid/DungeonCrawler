@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
-use crate::state::transforms::world_stage::WorldStage;
+use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
+use crossbeam::channel::Sender;
 use rand::{thread_rng, RngCore};
 
 use super::ai_packages::{AIPackageResult, IndependentPackage};
@@ -43,14 +44,14 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
     /// Requires the `world_stage` of the game, the `entity`
     /// being handled, and a `s_to_event Sender<ResponseType>`, to
     /// inform the `EventManager` of any changes in state.
-    pub fn run(&mut self, world_stage: &mut WorldStage, entity: &mut Entity) {
+    pub fn run(&mut self, world_stage: &mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>) {
         // If the package isn't expired
         if Instant::now() - self.start_time < self.chosen_dur {
             // Ensure that a package is selected
             if let Some(selected) = self.selected {
                 // Finally, run the next step, and test if the method stopped the
                 // package. If not, return.
-                if (self.packages[selected].step_next)(world_stage, entity)
+                if (self.packages[selected].step_next)(world_stage, entity, s_to_event)
                     != AIPackageResult::Abort
                 {
                     return;

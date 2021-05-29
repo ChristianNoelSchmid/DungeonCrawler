@@ -170,5 +170,11 @@ namespace DungeonCrawler.Monobehaviours
             _playerNames.Clear();
             _playerIds.Clear();
         }
+
+        public void ChargeAttack(int id)
+        {
+            var animator = _actorPositions[id].GetComponent<Animator>();
+            animator.SetTrigger("Charging");
+        }
     }
 }

@@ -176,6 +176,15 @@ impl EventManager {
                     self.s_to_clients.send(packet).unwrap();
                 }
             }
+            ResponseType::Charging(id) => {
+                self.s_to_clients 
+                    .send(SendPacket {
+                        addrs: self.all_addrs(),
+                        is_rel: false,
+                        msg: Type::Charging(id).serialize(),
+                    })
+                    .unwrap();
+            }
             // If the state registered a hit, send to all clients
             ResponseType::Hit(att_id, def_id, cur_health) => {
                 self.s_to_clients

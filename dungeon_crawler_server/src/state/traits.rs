@@ -73,9 +73,17 @@ pub trait Combater: Follower {
     /// A single progression towards implementing
     /// a single attack. Returns true when the entity
     /// is ready to attempt an attack.
-    fn charge_attk(&mut self) -> bool;
+    fn charge_attk(&mut self) -> AttackStatus;
     /// Resets a attack's charge.
     fn reset_attk(&mut self);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum AttackStatus {
+    NotReady,
+    BegunCharging,
+    Charging,
+    Charged,
 }
 
 pub enum AttackResult {

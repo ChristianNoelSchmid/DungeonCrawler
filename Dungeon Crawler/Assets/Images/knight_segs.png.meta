@@ -1,22 +1,28 @@
 fileFormatVersion: 2
-guid: 86dac05b18435444282e414dbe29c6d8
+guid: 843e9ef2427357e46a5f9e12223eddc5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8027329798746834875
-    second: goblin-aly_0
+      213: 4230255785252191112
+    second: knight_segs_0
   - first:
-      213: 1808742085071151140
-    second: goblin-aly_1
+      213: 3986049349534396327
+    second: knight_segs_1
   - first:
-      213: 5797602931290878747
-    second: goblin-aly_2
+      213: 1106198277922263012
+    second: knight_segs_2
   - first:
-      213: 446341016997634441
-    second: goblin-aly_3
+      213: 6036042299593980300
+    second: knight_segs_3
   - first:
-      213: -4959545254738606612
-    second: goblin-aly_4
+      213: -2114910497932974254
+    second: knight_segs_4
+  - first:
+      213: -5738092794827383362
+    second: knight_segs_5
+  - first:
+      213: -4919139855731138395
+    second: knight_segs_6
   externalObjects: {}
   serializedVersion: 11
   mipmaps:
@@ -59,8 +65,8 @@ TextureImporter:
   spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 9
-  spritePivot: {x: 0.5, y: 0.4814815}
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 27
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
@@ -106,106 +112,127 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: goblin-aly_0
+      name: knight_segs_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 2
-        width: 21
-        height: 27
-      alignment: 9
-      pivot: {x: 0.47619048, y: 0.5185185}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: bb7863ddbedc66f60800000000000000
-      internalID: 8027329798746834875
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_1
-      rect:
-        serializedVersion: 2
-        x: 22
-        y: 2
-        width: 23
-        height: 27
-      alignment: 9
-      pivot: {x: 0.47826087, y: 0.5185185}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 42027fed751f91910800000000000000
-      internalID: 1808742085071151140
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_2
-      rect:
-        serializedVersion: 2
-        x: 46
-        y: 2
-        width: 24
-        height: 27
-      alignment: 9
-      pivot: {x: 0.5, y: 0.5185185}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: b133b542629357050800000000000000
-      internalID: 5797602931290878747
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_3
-      rect:
-        serializedVersion: 2
-        x: 71
-        y: 2
-        width: 21
-        height: 28
-      alignment: 9
-      pivot: {x: 0.5714286, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 981a4d64ac8b13600800000000000000
-      internalID: 446341016997634441
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: goblin-aly_4
-      rect:
-        serializedVersion: 2
-        x: 94
         y: 0
-        width: 21
-        height: 29
+        width: 15
+        height: 27
       alignment: 9
-      pivot: {x: 0.5714286, y: 0.51724136}
+      pivot: {x: 0.53333336, y: 0.4814815}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ce5c4db1ed72c2bb0800000000000000
-      internalID: -4959545254738606612
+      spriteID: 88b7ffc4933e4ba30800000000000000
+      internalID: 4230255785252191112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: knight_segs_1
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 18
+        width: 6
+        height: 9
+      alignment: 9
+      pivot: {x: 0.5, y: 0.8888889}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7afac20b3ca415730800000000000000
+      internalID: 3986049349534396327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: knight_segs_2
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 8
+        width: 4
+        height: 9
+      alignment: 9
+      pivot: {x: 1, y: 0.8888889}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4ef84be09710a5f00800000000000000
+      internalID: 1106198277922263012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: knight_segs_3
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 2
+        width: 10
+        height: 4
+      alignment: 9
+      pivot: {x: 0.1, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c89f78cbd7454c350800000000000000
+      internalID: 6036042299593980300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: knight_segs_4
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 18
+        width: 4
+        height: 9
+      alignment: 9
+      pivot: {x: 0, y: 0.8888889}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 257e5fe7b1456a2e0800000000000000
+      internalID: -2114910497932974254
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: knight_segs_5
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 9
+        width: 6
+        height: 8
+      alignment: 9
+      pivot: {x: 0, y: 0.875}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ebdd51c31033e50b0800000000000000
+      internalID: -5738092794827383362
       vertices: []
       indices: 
       edges: []

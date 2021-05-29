@@ -18,6 +18,7 @@ pub enum Type {
     NewMonster(u32, u32, Vec2), // informs clients of a new Monster                  (temp_id, inst_id, pos)
     Moved(u32, Transform),      // informs server / clients of moved entity          (id, transform)
     PlayerLeft(u32),            // informs server / clients that a Player has left   (id)
+    Charging(u32),
     Hit(u32, u32, i32), // informs clients that a Player has been hit        (attId, defId, healthLeft)
     Miss(u32, u32),     // informs clients that a Player has been missed     (attId, defId)
     Dead(u32),          // informs clients that a Player has died            (id)
@@ -41,6 +42,7 @@ impl Serialize for Type {
             }
             Type::Moved(id, transform) => format!("Moved::{}::{}", id, transform.serialize()),
             Type::PlayerLeft(id) => format!("PlayerLeft::{}", id),
+            Type::Charging(id) => format!("Charging::{}", id),
             Type::Hit(att_id, def_id, cur_health) => {
                 format!("Hit::{}::{}::{}", att_id, def_id, cur_health)
             }
