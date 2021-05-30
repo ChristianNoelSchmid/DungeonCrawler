@@ -7,7 +7,10 @@
 
 use crossbeam::channel::Sender;
 
-use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
+use crate::{
+    events::{commands::cmd::Command, manager::SendTo},
+    state::{transforms::world_stage::WorldStage, types::ResponseType},
+};
 use std::time::Duration;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -40,7 +43,11 @@ pub struct IndependentPackage<Entity: ?Sized> {
     ///
     /// An increment in the `Entity`'s AI system
     ///
-    pub step_next: fn(&mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>) -> AIPackageResult,
+    pub step_next: fn(
+        &mut WorldStage,
+        entity: &mut Entity,
+        s_to_event: &Sender<(Command, SendTo)>,
+    ) -> AIPackageResult,
 
     ///
     /// The amount of time the `AIPackage` will run

@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
-use crate::state::{transforms::world_stage::WorldStage, types::ResponseType};
+use crate::{
+    events::{commands::cmd::Command, manager::SendTo},
+    state::{transforms::world_stage::WorldStage, types::ResponseType},
+};
 use crossbeam::channel::Sender;
 use rand::{thread_rng, RngCore};
 
@@ -44,7 +47,12 @@ impl<'a, Entity: ?Sized> IndependentManager<'a, Entity> {
     /// Requires the `world_stage` of the game, the `entity`
     /// being handled, and a `s_to_event Sender<ResponseType>`, to
     /// inform the `EventManager` of any changes in state.
-    pub fn run(&mut self, world_stage: &mut WorldStage, entity: &mut Entity, s_to_event: &Sender<ResponseType>) {
+    pub fn run(
+        &mut self,
+        world_stage: &mut WorldStage,
+        entity: &mut Entity,
+        s_to_event: &Sender<(Command, SendTo)>,
+    ) {
         // If the package isn't expired
         if Instant::now() - self.start_time < self.chosen_dur {
             // Ensure that a package is selected

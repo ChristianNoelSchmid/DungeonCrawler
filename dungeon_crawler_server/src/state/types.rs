@@ -29,10 +29,10 @@ pub enum ResponseType {
     NewMonster(u32, u32, Vec2, Direction), // (temp_id, inst_id, pos, dir)
     MonsterMoved(u32, Transform),          // (inst_id, transform)
     Charging(u32),
-    Hit(u32, u32, i32),                    // (attk_id, defd_id, defd health left)
-    Miss(u32, u32),                        // (attk_id, defd_id)
-    AttkTowards(u32, Vec2),                // (pos)
-    Dead(u32),                             // (id)
-    Escaped(u32),                          // (id)
+    Hit(u32, u32, i32),     // (attk_id, defd_id, defd health left)
+    Miss(u32, u32),         // (attk_id, defd_id)
+    AttkTowards(u32, Vec2), // (pos)
+    Dead(u32),              // (id)
+    Escaped(u32),           // (id)
     DungeonComplete,
 }

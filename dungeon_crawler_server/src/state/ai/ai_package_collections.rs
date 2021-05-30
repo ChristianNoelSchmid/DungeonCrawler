@@ -6,7 +6,20 @@ use std::time::{Duration, Instant};
 
 use rand::{prelude::IteratorRandom, thread_rng};
 
-use crate::{astar::{find_shortest_path, visible_actors}, state::{actor::ActorId, ai::ai_packages::AIPackageResult, traits::{AI, AttackStatus}, transforms::world_stage::WorldStage, types::ResponseType}};
+use crate::{
+    astar::{find_shortest_path, visible_actors},
+    events::{
+        commands::{cmd::Command, combat::CombatCommand},
+        manager::SendTo,
+    },
+    state::{
+        actor::ActorId,
+        ai::ai_packages::AIPackageResult,
+        traits::{AttackStatus, AI},
+        transforms::world_stage::WorldStage,
+        types::ResponseType,
+    },
+};
 
 use super::ai_packages::IndependentPackage;
 
@@ -99,26 +112,36 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
                         world_stage.try_attk(entity.id(), target_id);
                     } else {
                         if let Some(pos) = follow_target_pos {
-                            s_to_event.send(ResponseType::AttkTowards(entity.id(), pos)).unwrap();
+                            s_to_event
+                                .send((
+                                    Command::Combat(CombatCommand::AttackTowards(entity.id(), pos)),
+                                    SendTo::All,
+                                ))
+                                .unwrap();
                             world_stage.move_pos(entity.id(), pos);
                         }
                     }
                     return AIPackageResult::Continue;
-                },
+                }
                 AttackStatus::Charging => {
-                    return AIPackageResult::Continue;   
-                },
-                AttackStatus::BegunCharging => {
-                    s_to_event.send(ResponseType::Charging(entity.id())).unwrap();
                     return AIPackageResult::Continue;
-                },
+                }
+                AttackStatus::BegunCharging => {
+                    s_to_event
+                        .send((
+                            Command::Combat(CombatCommand::Charging(entity.id())),
+                            SendTo::All,
+                        ))
+                        .unwrap();
+                    return AIPackageResult::Continue;
+                }
                 AttackStatus::NotReady => {
                     if ent_tr.pos.distance(target_tr.pos) > 1.0 {
                         entity.reset_attk();
                     } else {
                         return AIPackageResult::Continue;
                     }
-                },
+                }
             }
         } else {
             entity.reset_attk();

@@ -1,8 +1,8 @@
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, str::FromStr, time::Duration};
 
 use crossbeam::channel::{Receiver, Sender};
 use dungeon_generator::inst::Dungeon;
-use simple_serializer::{Deserialize, Serialize};
+use simple_serializer::Serialize;
 use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacket};
 
 use crate::{
@@ -13,6 +13,15 @@ use crate::{
         types::{RequestType, ResponseType},
     },
 };
+
+use super::commands::cmd::Command;
+
+
+pub enum SendTo {
+    One(u32),
+    AllBut(u32),
+    All,
+}
 
 ///
 /// Handles receiving data from the DatagramManager, parsing the data,
@@ -26,47 +35,39 @@ pub struct EventManager {
 
     // The PacketSender / Receiver associated with the
     // DatagramManager used to retrieve client packets.
-    r_from_client: PacketReceiver,
+    r_from_clients: PacketReceiver,
     s_to_clients: PacketSender,
 
     // The PacketSender / Receiver associated with the
     // StateManager's update thread.
-    s_to_state: Sender<RequestType>,
-    r_from_state: Receiver<ResponseType>,
+    s_to_state: Sender<(Command, u32)>,
 
     // The currently connected addrs. Is added to when the
     // DatagramManager sends a packet from a new SocketAddr,
     // and removes when the DatagramManager times out a client.
     addrs: HashMap<SocketAddr, u32>,
-
-    // A global instance ID counter. Incremented
-    // whenever a new StateManager entity is created.
-    id_next: u32,
 }
 
 impl EventManager {
     /// Creates a new EventHandler, and receives a DatagramHandler's
     /// client Receiver `r_from_client` and Sender `s_to_clients`.
-    pub fn new(r_from_client: PacketReceiver, s_to_clients: PacketSender) -> Self {
+    pub fn new(r_from_clients: PacketReceiver, s_to_clients: PacketSender) -> Self {
         let dun = Dungeon::new(75, 75);
-        let state_manager = StateManager::new(dun);
-        let (s_to_state, r_from_state) = state_manager.get_sender_receiver();
+        let (s_to_state, r_from_event) = crossbeam::channel::unbounded();
 
-        for i in 0..10 {
-            s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
-        }
+        let state_manager = StateManager::new(dun, 10, r_from_event.clone());
+        let r_from_state = state_manager.get_receiver();
 
         EventManager {
             state_manager,
 
-            r_from_client,
             s_to_clients,
+            r_from_clients,
 
             s_to_state,
             r_from_state,
 
             addrs: HashMap::new(),
-            id_next: 10,
         }
     }
 
@@ -108,7 +109,9 @@ impl EventManager {
                 msg: Type::PlayerLeft(id).serialize(),
             });
 
-            self.s_to_state.send(RequestType::DropPlayer(id)).unwrap();
+            self.s_to_state
+                .send((addr, Command::Sync(SyncCommand::PlayerLeft(id))))
+                .unwrap();
         }
         snd_packets
     }
@@ -119,40 +122,9 @@ impl EventManager {
     ///
     fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Vec<SendPacket> {
         let mut snd_packets = Vec::new();
-
-        // Parse the msg into an appropriate event
-        let event = Type::deserialize(&msg);
-
-        match event {
-            // If a client has just joined and requesting a sync, inform the StateManager
-            // to add the Player and send a Welcome Packet
-            Type::Hello(name) => {
-                self.s_to_state
-                    .send(RequestType::NewPlayer(addr, self.id_next, name))
-                    .unwrap();
-                self.addrs.insert(addr, self.id_next);
-                self.id_next += 1;
-            }
-            // If a client's position has moved, update the StateManager,
-            // and
-            Type::Moved(id, transform) => {
-                // If Moved, update in state and send to other clients
-                if self.addrs.contains_key(&addr) {
-                    self.s_to_state
-                        .send(RequestType::PlayerMoved(id, transform))
-                        .unwrap();
-                    snd_packets.push(SendPacket {
-                        addrs: self.all_addrs_but(addr),
-                        is_rel: false,
-                        msg: Type::Moved(id, transform).serialize(),
-                    });
-                }
-            }
-            Type::AttemptHit(attk_id, defd_id) => {
-                self.s_to_state.send(RequestType::AttemptHit(attk_id, defd_id)).unwrap();
-            }
-            _ => {}
-        };
+        if let Ok(cmd) = Command::from_str(&msg) {
+            if let Command::Sync(SyncCommand::Hello(_)) = cmd {}
+        }
         snd_packets
     }
 
@@ -180,7 +152,7 @@ impl EventManager {
                 }
             }
             ResponseType::Charging(id) => {
-                self.s_to_clients 
+                self.s_to_clients
                     .send(SendPacket {
                         addrs: self.all_addrs(),
                         is_rel: false,
@@ -250,7 +222,7 @@ impl EventManager {
 
                 std::thread::sleep(Duration::from_secs(5));
 
-                self.state_manager = StateManager::new(Dungeon::new(75, 75));
+                self.state_manager = StateManager::new(Dungeon::new(75, 75), 10, self.);
                 let (s, r) = self.state_manager.get_sender_receiver();
                 self.s_to_state = s;
                 self.r_from_state = r;

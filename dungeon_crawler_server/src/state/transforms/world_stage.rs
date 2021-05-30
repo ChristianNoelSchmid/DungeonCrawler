@@ -3,7 +3,11 @@ use std::collections::{HashMap, HashSet};
 use crossbeam::channel::Sender;
 use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
-use crate::state::{actor::{Actor, ActorId, Status}, traits::{AttackResult, Qualities}, types::ResponseType};
+use crate::state::{
+    actor::{Actor, ActorId, Status},
+    traits::Qualities,
+    types::ResponseType,
+};
 
 use super::{
     transform::{Direction, Transform},

@@ -10,7 +10,6 @@ use super::transforms::{transform::Transform, vec2::Vec2};
 /// current state of the game
 ///
 pub struct StateSnapshot {
-    pub addr_for: SocketAddr,
     pub new_player: (u32, String, Vec2),
     pub other_players: Vec<(u32, String, Vec2, String)>,
     pub all_player_ts: Vec<(u32, Transform)>,

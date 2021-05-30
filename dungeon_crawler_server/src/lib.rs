@@ -1,4 +1,10 @@
 pub mod events {
+    pub mod commands {
+        pub mod cmd;
+        pub mod combat;
+        pub mod status;
+        pub mod sync;
+    }
     pub mod manager;
     pub mod types;
 }

@@ -136,7 +136,7 @@ impl Combater for MonsterInstance {
                 n if n > Duration::from_millis(750) => {
                     self.charge_attk = None;
                     return AttackStatus::Charged;
-                },
+                }
                 n if n > Duration::from_millis(250) => {
                     if !self.charging {
                         self.charging = true;
@@ -144,7 +144,7 @@ impl Combater for MonsterInstance {
                     } else {
                         return AttackStatus::Charging;
                     }
-                },
+                }
                 _ => self.charging = false,
             }
         } else {

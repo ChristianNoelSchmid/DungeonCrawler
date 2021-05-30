@@ -88,15 +88,10 @@ impl Deserialize for Type {
                     ),
                     _ => Type::Dropped,
                 }
-            },
-            "AttemptHit" => {
-                match(
-                    u32::from_str(segs[1]),
-                    u32::from_str(segs[2]),
-                ) {
-                    (Ok(attk_id), Ok(defd_id)) => Type::AttemptHit(attk_id, defd_id),
-                    _ => Type::Dropped,
-                }
+            }
+            "AttemptHit" => match (u32::from_str(segs[1]), u32::from_str(segs[2])) {
+                (Ok(attk_id), Ok(defd_id)) => Type::AttemptHit(attk_id, defd_id),
+                _ => Type::Dropped,
             },
             _ => Type::Dropped,
         }
