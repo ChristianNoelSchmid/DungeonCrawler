@@ -1,22 +1,15 @@
-use std::{
-    collections::HashMap,
-    time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
     events::{
         commands::{cmd::Command, combat::CombatCommand, sync::SyncCommand},
-        manager:: SendTo,
+        manager::SendTo,
     },
-    state::{
-        ai::ai_package_collections::{IDLE, MELEE_COMBAT},
-        types::ResponseType,
-    },
+    state::ai::ai_package_collections::{IDLE, MELEE_COMBAT},
 };
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, SendError, Sender};
 use dungeon_generator::inst::Dungeon;
 use rand::prelude::*;
-use simple_serializer::Serialize;
 
 use super::{
     actor::{Actor, ActorId, Status},
@@ -27,7 +20,6 @@ use super::{
     transforms::transform::Transform,
 };
 use super::{
-    snapshot::StateSnapshot,
     stats::{Attributes, Stats},
     traits::AI,
     transforms::{transform::Direction, vec2::Vec2, world_stage::WorldStage},
@@ -62,10 +54,7 @@ static MONSTERS: [Monster; 1] = [Monster {
 /// cloned to communicate with the state
 ///
 pub struct StateManager {
-    s_to_event: Sender<(Command, SendTo)>,
     r_from_state: Receiver<(Command, SendTo)>,
-
-    r_from_event: Receiver<(Command, u32)>,
 }
 
 impl StateManager {
@@ -76,19 +65,14 @@ impl StateManager {
     pub fn new(
         dungeon: Dungeon,
         monster_count: u32,
-        r_from_event: Receiver<(Command, u32)>,
+        r_from_event: Receiver<Command>,
     ) -> Self {
-        let (s_to_event, r_from_state) = state_loop(dungeon, monster_count, r_from_event);
-        Self {
-            r_from_state,
-
-            s_to_event,
-            r_from_event,
-        }
+        let r_from_state = state_loop(dungeon, monster_count, r_from_event);
+        Self { r_from_state }
     }
 
-    pub fn get_reciever(&self) -> Receiver<(Command, SendTo)> {
-        self.r_from_state
+    pub fn get_receiver(&self) -> Receiver<(Command, SendTo)> {
+        self.r_from_state.clone()
     }
 }
 
@@ -98,15 +82,15 @@ impl StateManager {
 fn state_loop(
     dungeon: Dungeon,
     monster_count: u32,
-    r_from_event: Receiver<(Command, u32)>,
-) -> (Sender<(Command, SendTo)>, Receiver<(Command, SendTo)>) {
+    r_from_event: Receiver<Command>,
+) -> Receiver<(Command, SendTo)> {
     let (s_to_event, r_from_state): (Sender<(Command, SendTo)>, _) =
         crossbeam::channel::unbounded();
 
-    std::thread::spawn(move || {
+    std::thread::spawn(move || -> Result<(), SendError<(Command, SendTo)>> {
         // A global instance ID counter. Incremented
         // whenever a new StateManager entity is created.
-        let id_next = 0_u32;
+        let mut id_next = 0_u32;
         // The collection of monsters, keyed by position
         let mut monsters = HashMap::<Vec2, MonsterInstance>::new();
         // The collection of players, keyed by id
@@ -124,7 +108,6 @@ fn state_loop(
                 .collect(),
             Vec2::from_tuple(dungeon.entrance),
             Vec2::from_tuple(dungeon.exit),
-            s_to_event.clone(),
         );
 
         for _ in 0..monster_count {
@@ -153,14 +136,16 @@ fn state_loop(
         // Begin the stateloop, which will not cease until the program ends
         loop {
             // If there are any requests sent to the StateManager
-            if let Ok(request) = r_from_event.try_recv() {
-                match request {
+            if let Ok(cmd) = r_from_event.try_recv() {
+                match cmd {
                     // If a new player has been added, insert them into the
                     // WorldState and send a StateSnapshot to the EventManager,
                     // to be forwarded to the player
-                    (Command::Sync(SyncCommand::Hello(name)), callback) => {
+                    Command::Sync(SyncCommand::Hello(name)) => {
                         let id = id_next;
                         id_next += 1;
+
+                        let entrance = Vec2::from_tuple(dungeon.entrance);
 
                         players.insert(id, Player::new(id, name.clone()));
                         world_stage.add(
@@ -169,61 +154,61 @@ fn state_loop(
                                 id,
                                 Stats::new(10, 10, 10),
                                 Attributes::new(5, 5, 5),
-                                Transform::with_values(
-                                    Vec2::from_tuple(dungeon.entrance),
-                                    Direction::Left,
-                                ),
+                                Transform::with_values(entrance, Direction::Left),
                                 ActorId::Player,
                             ),
                         );
-                        s_to_event
-                            .send(ResponseType::StateSnapshot(StateSnapshot {
-                                new_player: (id, name, world_stage.pos(id).unwrap()),
-                                other_players: players
-                                    .values()
-                                    .filter(|p| p.id != id)
-                                    .cloned()
-                                    .map(|p| {
-                                        (
-                                            p.id,
-                                            p.name.clone(),
-                                            world_stage.pos(p.id).unwrap(),
-                                            world_stage.actor(p.id).unwrap().status.serialize(),
-                                        )
-                                    })
-                                    .collect(),
-                                monsters: monsters
-                                    .values()
-                                    .map(|m| {
-                                        (m.template.id, m.id(), world_stage.pos(m.id()).unwrap())
-                                    })
-                                    .collect(),
-                                dungeon: dungeon.clone(),
-                                all_player_ts: world_stage.clone_transforms(),
-                            }))
-                            .unwrap();
+
+                        for monster in monsters.values() {
+                            let pos = world_stage.pos(monster.instance_id).unwrap();
+                            s_to_event.send((
+                                Command::Sync(SyncCommand::NewMonster(
+                                    monster.template.id,
+                                    monster.instance_id,
+                                    pos,
+                                )),
+                                SendTo::One(id),
+                            ))?;
+                        }
+                        for pl in players.values().filter(|pl| pl.id != id) {
+                            let pos = world_stage.pos(pl.id).unwrap();
+                            s_to_event.send((
+                                Command::Sync(SyncCommand::NewPlayer(pl.id, pl.name.clone(), pos)),
+                                SendTo::One(id),
+                            ))?;
+                        }
+                        s_to_event.send((
+                            Command::Sync(SyncCommand::NewPlayer(id, name, entrance)),
+                            SendTo::AllBut(id),
+                        ))?;
                     }
                     // If a Player has been dropped, remove them from the
                     // WorldStage and players collection
-                    (Command::Sync(SyncCommand::PlayerLeft(id)), callback) => {
+                    Command::Sync(SyncCommand::PlayerLeft(id)) => {
                         world_stage.remove(id);
                         players.remove(&id);
-                        (callback.send_to_others)(request.0);
+                        s_to_event.send((cmd, SendTo::AllBut(id)))?;
                     }
                     // If a Player has move, update their
                     // Transform in the WorldStage
-                    (Command::Sync(SyncCommand::Moved(id, new_t)), callback) => {
+                    Command::Sync(SyncCommand::Moved(id, new_t)) => {
                         world_stage.update_pl_tr(id, new_t);
-                        (callback.send_to_others)(request.0);
+                        let tr = world_stage.actor(id).unwrap().tr;
+                        s_to_event
+                            .send((
+                                Command::Sync(SyncCommand::Moved(id, tr)),
+                                SendTo::AllBut(id),
+                            ))
+                            .unwrap();
                     }
-                    (Command::Combat(CombatCommand::AttackTowards(id, pos)), callback) => {
+                    Command::Combat(CombatCommand::AttackTowards(id, pos)) => {
                         if let Some(act) = world_stage.is_actor_id_on_spot(ActorId::Monster, pos) {
                             world_stage.try_attk(id, act.id);
                         }
-                        (callback.send_to_others)(request.0);
+                        s_to_event.send((cmd, SendTo::AllBut(id))).unwrap();
                     }
                     // If the program is ending, break from the loop
-                    (Command::Abort, _) => break,
+                    Command::Abort => break Ok(()),
                     _ => {}
                 }
             }
@@ -247,7 +232,7 @@ fn state_loop(
             // Check if the dungeon is complete. If so,
             // update the EventManager to inform the connected clients
             if is_dungeon_complete(&mut world_stage, &players) {
-                s_to_event.send(ResponseType::DungeonComplete).unwrap();
+                s_to_event.send((Command::Sync(SyncCommand::DungeonComplete), SendTo::All))?;
                 for pl in players.values() {
                     world_stage.actor(pl.id).unwrap().status = Status::Active;
                 }
@@ -260,7 +245,7 @@ fn state_loop(
         }
     });
 
-    (s_to_event, r_from_state)
+    r_from_state
 }
 
 /// Checks if the dungeon is complete by determining if all `players`
@@ -307,11 +292,4 @@ fn spawn_monster(id: u32, world_stage: &mut WorldStage) -> MonsterInstance {
         .unwrap();
 
     MonsterInstance::new(&MONSTERS[index], id)
-}
-
-impl Drop for StateManager {
-    fn drop(&mut self) {
-        // Drop the state thread when the application quits
-        self.s_to_state.send(Command::Abort).unwrap();
-    }
 }

@@ -16,6 +16,6 @@ namespace Assets.Scripts.Networking.NetworkEvents
                 Id = int.Parse(args[0]),
             };
         }
-        public string CreateString() => $"Charging::{Model.Id}";
+        public string CreateString() => $"Combat::Charging::{Model.Id}";
     }
 }

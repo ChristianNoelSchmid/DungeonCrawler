@@ -23,7 +23,7 @@ pub enum Command {
 impl FromStr for Command {
     type Err = ParseCmdErr;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let args = CmdArgs::from(s);
+        let mut args = CmdArgs::from(s);
         match args.next()? {
             "Sync" => Ok(Command::Sync(SyncCommand::from_str(args.join_rest()?)?)),
             "Combat" => Ok(Command::Combat(CombatCommand::from_str(args.join_rest()?)?)),

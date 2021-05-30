@@ -135,9 +135,8 @@ namespace DungeonCrawler.Networking
         /// <returns>The NetworkEvent, with parsed data</returns>
         private NetworkEvent ParseEvent(string text)
         {
-            var command = text.Split(new string [] { "::" }, 2, StringSplitOptions.None)[0];
-            var args = text.Substring(command.Length + 2);
-            Debug.Log(text);
+            var command = text.Split(new string [] { "::" }, 2, StringSplitOptions.None)[1];
+            var args = text.Substring(text.IndexOf(command) + command.Length + 2);
             try 
             {
                 return command switch
@@ -147,7 +146,7 @@ namespace DungeonCrawler.Networking
                     "NewMonster" =>      new NewMonster(args),
                     "PlayerLeft" =>      new PlayerLeft(args),
                     "Charging"   =>      new Charging(args),
-                    "AttkTowards"=>      new AttkTowards(args),
+                    "AttackTowards"=>    new AttackTowards(args),
                     "Hit"        =>      new Hit(args),
                     "Miss"       =>      new Miss(args),
                     "Moved"      =>      new Moved(args),
@@ -257,7 +256,7 @@ namespace DungeonCrawler.Networking
                     );
                     break;
 
-                case AttkTowards towards:
+                case AttackTowards towards:
                     _actorGen.AttackTowards(towards.Model.Id, towards.Model.Value.ToVector2Int());
                     break;
             }

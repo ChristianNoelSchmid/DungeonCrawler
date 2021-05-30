@@ -25,6 +25,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
                 },
             };
         }
-        public string CreateString() => $"AttemptHit::{Model.Serialize()}";
+        public string CreateString() => $"Combat::AttemptHit::{Model.Serialize()}";
     }
 }

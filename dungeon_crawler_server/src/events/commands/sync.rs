@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{net::SocketAddr, str::FromStr};
 
 use simple_serializer::Serialize;
 
@@ -22,6 +22,10 @@ pub enum SyncCommand {
     NewMonster(u32, u32, Vec2), // informs clients of a new Monster                  (temp_id, inst_id, pos)
     Reconnect,                  // requests that the clients reconnect - new StateManager
     DungeonComplete,            // informs clients that the Dungeon has been completed
+
+    // Server Synchronization
+    CreatePlayer(SocketAddr, String),
+    WelcomePlayer(SocketAddr, u32, String, Vec2),
 }
 
 impl Serialize for SyncCommand {
@@ -32,9 +36,6 @@ impl Serialize for SyncCommand {
                 format!("Moved::{}::{}", id, transform.serialize())
             }
             SyncCommand::PlayerLeft(id) => format!("PlayerLeft::{}", id),
-
-            SyncCommand::Hello(name) => format!("Hello::{}", name),
-
             SyncCommand::Welcome(id, dun) => format!("Welcome::{}::{}", id, dun),
             SyncCommand::NewPlayer(id, name, pos) => {
                 format!("NewPlayer::{}::{}::{}", id, name, pos.serialize())
@@ -44,6 +45,10 @@ impl Serialize for SyncCommand {
             }
             SyncCommand::Reconnect => "Reconnect::".to_string(),
             SyncCommand::DungeonComplete => "DungeonComplete::".to_string(),
+
+            // For the SyncCommands that aren't ever sent to clients,
+            // return an empty String
+            _ => "".to_string()
         }
     }
 }

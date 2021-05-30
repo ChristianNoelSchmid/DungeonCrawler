@@ -1,6 +1,7 @@
 using DungeonCrawler.Networking;
 using UnityEngine;
 using UnityEngine.UI;
+using DungeonCrawler.Monobehaviours;
 
 public class UIEnterPane : UIGroup
 { 
@@ -28,6 +29,9 @@ public class UIEnterPane : UIGroup
         if (!_datagramHandler.AttemptSignin(_nameField.text, _ipAddrField.text))
             _errorText.enabled = true;
         else
+        {
             SetVisible(false);
+            PlayerMovement.Disabled = false;
+        }
     }
 }

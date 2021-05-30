@@ -18,6 +18,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
             string [] args = value.Split(new string[] { "::" }, StringSplitOptions.None);
             Model = new Vector2Int(int.Parse(args[0]), int.Parse(args[1]));
         }
-        public string CreateString() => $"RequestMove::{Model.x}::{Model.y}";
+        public string CreateString() => $"Sync::RequestMove::{Model.x}::{Model.y}";
     }
 }

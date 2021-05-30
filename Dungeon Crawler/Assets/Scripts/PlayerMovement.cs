@@ -22,7 +22,7 @@ namespace DungeonCrawler.Monobehaviours
         private const float MOVE_INC = 0.125f;
         private const float DIAG_INC = 1.4f;
 
-        public static bool Disabled { get; set; } = false;
+        public static bool Disabled { get; set; } = true;
 
         [SerializeField]
         private NetworkDatagramHandler _datagramHandler;
@@ -133,16 +133,14 @@ namespace DungeonCrawler.Monobehaviours
                 _animator.SetInteger("AttackDirection", dir);
                 _renderer.TriggerAction(ActionType.PrimaryPressed);
 
-                int enemyId = _actorGen.NonPlayerAt(attackPos);
-                if(enemyId != -1)
-                    _datagramHandler.SendDatagram(new HitAttempt
+                _datagramHandler.SendDatagram(new AttackTowards
+                {
+                    Model = new DataModel<PositionModel>()
                     {
-                        Model = new DataModel<MissModel>
-                        {
-                            Id = _actorGen.ClientPlayerId,
-                            Value = new MissModel { DefenderId = enemyId }
-                        }
-                    }.CreateString(), false);
+                        Id = _actorGen.ClientPlayerId,
+                        Value = PositionModel.FromVector2Int(attackPos)
+                    }
+                }.CreateString(), false);
 
                 _attackTimeout = 0.35f;
             }

@@ -27,6 +27,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
                 },
             };
         }
-        public string CreateString() => $"Moved::{Model.Serialize()}";
+        public string CreateString() => $"Sync::Moved::{Model.Serialize()}";
     }
 }

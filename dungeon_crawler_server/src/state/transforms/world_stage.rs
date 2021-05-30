@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crossbeam::channel::Sender;
 use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
 use crate::state::{
     actor::{Actor, ActorId, Status},
     traits::Qualities,
-    types::ResponseType,
 };
 
 use super::{
@@ -31,27 +29,18 @@ pub struct WorldStage {
     exit: Vec2,
     // All spots currently filled by actors
     filled_spots: HashSet<Vec2>,
-
-    // A clone of the Sender to the EventManager
-    s_to_event: Sender<ResponseType>,
 }
 
 impl WorldStage {
     /// Creates a new `WorldStage` with the specified `paths`,
     /// `entrance` and `exit` points, and `Sender` `s_to_event`.
-    pub fn new(
-        paths: HashSet<Vec2>,
-        entrance: Vec2,
-        exit: Vec2,
-        s_to_event: Sender<ResponseType>,
-    ) -> Self {
+    pub fn new(paths: HashSet<Vec2>, entrance: Vec2, exit: Vec2) -> Self {
         Self {
             actors: HashMap::new(),
             paths,
             entrance,
             exit,
             filled_spots: HashSet::new(),
-            s_to_event,
         }
     }
     /// Retrieves an `Actor` from WorldStage via 'id', if the `Actor` exists
@@ -106,7 +95,6 @@ impl WorldStage {
             if act.tr.pos == self.exit {
                 act.status = Status::Escaped;
                 self.filled_spots.remove(&act.tr.pos);
-                self.s_to_event.send(ResponseType::Escaped(act.id)).unwrap();
             }
 
             true
@@ -146,10 +134,6 @@ impl WorldStage {
             };
 
             a.tr.pos = new_pos;
-
-            self.s_to_event
-                .send(ResponseType::MonsterMoved(id, a.tr))
-                .unwrap();
 
             return true;
         }
@@ -263,20 +247,7 @@ impl WorldStage {
             if *health <= 0 {
                 defender.status = Status::Dead;
                 self.filled_spots.remove(&defender.tr.pos);
-                self.s_to_event.send(ResponseType::Dead(defd_id)).unwrap();
             }
-
-            self.s_to_event
-                .send(ResponseType::Hit(
-                    attk_id,
-                    defd_id,
-                    defender.stats().cur_health,
-                ))
-                .unwrap();
-        } else {
-            self.s_to_event
-                .send(ResponseType::Miss(attk_id, defd_id))
-                .unwrap();
         }
     }
 }

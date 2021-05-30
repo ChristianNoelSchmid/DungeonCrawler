@@ -6,5 +6,7 @@ fn main() -> Result<(), std::io::Error> {
     let (s, r) = dgm_h.get_sender_receiver();
 
     let mut evt_h = EventManager::new(r, s);
-    evt_h.start();
+    evt_h.start().expect("Problem with the EventHandler");
+
+    Ok(())
 }

@@ -21,6 +21,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
             };
         }
 
-        public string CreateString() => $"PlayerLeft::{Model.Serialize()}";
+        public string CreateString() => $"Sync::PlayerLeft::{Model.Serialize()}";
     }
 }

@@ -1,21 +1,13 @@
 use std::{collections::HashMap, net::SocketAddr, str::FromStr, time::Duration};
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, SendError, Sender};
 use dungeon_generator::inst::Dungeon;
 use simple_serializer::Serialize;
 use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacket};
 
-use crate::{
-    events::types::Type,
-    state::{
-        manager::StateManager,
-        snapshot::StateSnapshot,
-        types::{RequestType, ResponseType},
-    },
-};
+use crate::{events::types::Type, state::manager::StateManager};
 
-use super::commands::cmd::Command;
-
+use super::commands::{cmd::Command, sync::SyncCommand};
 
 pub enum SendTo {
     One(u32),
@@ -40,7 +32,10 @@ pub struct EventManager {
 
     // The PacketSender / Receiver associated with the
     // StateManager's update thread.
-    s_to_state: Sender<(Command, u32)>,
+    s_to_state: Sender<Command>,
+    r_from_event: Receiver<Command>,
+
+    r_from_state: Receiver<(Command, SendTo)>,
 
     // The currently connected addrs. Is added to when the
     // DatagramManager sends a packet from a new SocketAddr,
@@ -65,6 +60,8 @@ impl EventManager {
             r_from_clients,
 
             s_to_state,
+            r_from_event,
+
             r_from_state,
 
             addrs: HashMap::new(),
@@ -73,16 +70,13 @@ impl EventManager {
 
     /// Starts the EventHandler: begins an infinite
     /// loop to begin receiving packets from the DatagramHandler
-    pub fn start(&mut self) -> ! {
+    pub fn start(&mut self) -> Result<(), SendError<SendPacket>> {
         loop {
-            if let Ok(packet) = self.r_from_client.try_recv() {
-                let snd_packets = self.parse_client_packet(packet);
-                for packet in snd_packets {
-                    self.s_to_clients.send(packet).unwrap();
-                }
+            if let Ok(packet) = self.r_from_clients.try_recv() {
+                self.parse_client_packet(packet).unwrap();
             }
-            if let Ok(response) = self.r_from_state.try_recv() {
-                self.parse_state_response(response);
+            if let Ok((cmd, send_to)) = self.r_from_state.try_recv() {
+                self.parse_state_response(cmd, send_to)?;
             }
         }
     }
@@ -90,158 +84,77 @@ impl EventManager {
     /// Parses a Datagram ReceivePacket `packet`, determining what needs
     /// to be accomplished on the server state, and what messages need to
     /// be sent back to the clients.
-    fn parse_client_packet(&mut self, packet: ReceivePacket) -> Vec<SendPacket> {
+    fn parse_client_packet(&mut self, packet: ReceivePacket) -> Result<(), SendError<Command>> {
         match packet {
             ReceivePacket::DroppedClient(addr) => self.drop_client(addr),
-            ReceivePacket::ClientMessage(addr, msg) => self.parse_client_msg((addr, msg)),
+            ReceivePacket::ClientMessage(addr, msg) => self.parse_client_msg((addr, msg))?,
         }
+        Ok(())
     }
 
     /// Drops the supplied client `addr` from the EventHandler's
     /// system. Generally called via client request, or when
     /// the server's connection with the client has timed out
-    fn drop_client(&mut self, addr: SocketAddr) -> Vec<SendPacket> {
-        let mut snd_packets = Vec::new();
+    fn drop_client(&mut self, addr: SocketAddr) {
         if let Some(id) = self.addrs.remove(&addr) {
-            snd_packets.push(SendPacket {
-                addrs: self.all_addrs(),
-                is_rel: true,
-                msg: Type::PlayerLeft(id).serialize(),
-            });
-
             self.s_to_state
-                .send((addr, Command::Sync(SyncCommand::PlayerLeft(id))))
+                .send(Command::Sync(SyncCommand::PlayerLeft(id)))
                 .unwrap();
         }
-        snd_packets
     }
 
     ///
     /// Parses the `msg` received from the DatagramHandler from client `addr`,
     /// determing the appropriate course of action, and performing it.
     ///
-    fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Vec<SendPacket> {
-        let mut snd_packets = Vec::new();
+    fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Result<(), SendError<Command>> {
         if let Ok(cmd) = Command::from_str(&msg) {
-            if let Command::Sync(SyncCommand::Hello(_)) = cmd {}
+            self.s_to_state.send(match cmd {
+                // If a `Hello` message was sent, CreatePlayer must
+                // be called to ensure the new client is assigned an
+                // Id. addr is given so the StateManager can send the
+                // correct Id to the correct associate address.
+                Command::Sync(SyncCommand::Hello(name)) => {
+                    Command::Sync(SyncCommand::CreatePlayer(
+                        addr,
+                        name
+                    ))
+                },
+                _ => cmd
+            })?;
         }
-        snd_packets
+        Ok(())
     }
 
     /// Parses responses sent by the `StateManager`, and sends the
     /// information to the appropriate clients.
-    fn parse_state_response(&mut self, response: ResponseType) {
-        match response {
-            // If a monster has moved, inform all clients
-            ResponseType::MonsterMoved(id, transform) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: false,
-                        msg: Type::Moved(id, transform).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If a StateSnapshot was sent, create a welcome packet for the
-            // client that sent `Hello`, and inform all connected clients
-            // of this new Player.
-            ResponseType::StateSnapshot(snapshot) => {
-                let snd_msg_packets = self.prepare_welcome_packet(snapshot);
-                for packet in snd_msg_packets.into_iter() {
-                    self.s_to_clients.send(packet).unwrap();
-                }
-            }
-            ResponseType::Charging(id) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: false,
-                        msg: Type::Charging(id).serialize(),
-                    })
-                    .unwrap();
-            }
-            ResponseType::AttkTowards(id, pos) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: false,
-                        msg: Type::AttkTowards(id, pos).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If the state registered a hit, send to all clients
-            ResponseType::Hit(att_id, def_id, cur_health) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: false,
-                        msg: Type::Hit(att_id, def_id, cur_health).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If the state registered a miss, send to all clients
-            ResponseType::Miss(att_id, def_id) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: false,
-                        msg: Type::Miss(att_id, def_id).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If the state registered a Player has died, send to all clients
-            ResponseType::Dead(id) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: true,
-                        msg: Type::Dead(id).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If the state registered a Player has escaped, send to all clients
-            ResponseType::Escaped(id) => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: true,
-                        msg: Type::Escaped(id).serialize(),
-                    })
-                    .unwrap();
-            }
-            // If the state registered that all Players are either dead or escaped,
-            // reset the StateManager, creating a new dungeon.
-            ResponseType::DungeonComplete => {
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: true,
-                        msg: Type::DungeonComplete.serialize(),
-                    })
-                    .unwrap();
+    fn parse_state_response(
+        &mut self,
+        response: Command,
+        send_to: SendTo,
+    ) -> Result<(), SendError<SendPacket>> {
+        // If the state registered that all Players are either dead or escaped,
+        // reset the StateManager, creating a new dungeon.
+        if let Command::Sync(SyncCommand::DungeonComplete) = response {
+            self.s_to_clients.send(SendPacket {
+                addrs: self.all_addrs(),
+                is_rel: true,
+                msg: Type::DungeonComplete.serialize(),
+            })?;
 
-                std::thread::sleep(Duration::from_secs(5));
+            std::thread::sleep(Duration::from_secs(5));
 
-                self.state_manager = StateManager::new(Dungeon::new(75, 75), 10, self.);
-                let (s, r) = self.state_manager.get_sender_receiver();
-                self.s_to_state = s;
-                self.r_from_state = r;
-                self.s_to_clients
-                    .send(SendPacket {
-                        addrs: self.all_addrs(),
-                        is_rel: true,
-                        msg: Type::Reconnect.serialize(),
-                    })
-                    .unwrap();
-
-                for i in self.id_next..self.id_next + 10 {
-                    self.s_to_state.send(RequestType::SpawnMonster(i)).unwrap();
-                }
-
-                self.id_next += 10;
-            }
-            _ => {}
+            self.state_manager =
+                StateManager::new(Dungeon::new(75, 75), 10, self.r_from_event.clone());
+            let r = self.state_manager.get_receiver();
+            self.r_from_state = r;
+            self.s_to_clients.send(SendPacket {
+                addrs: self.all_addrs(),
+                is_rel: true,
+                msg: Type::Reconnect.serialize(),
+            })?;
         }
+        Ok(())
     }
 
     /// Retrieve all `SocketAddr`s attached to the EventHandler
@@ -257,60 +170,5 @@ impl EventManager {
             .filter(|(a, _)| *a != addr)
             .map(|(k, _)| k)
             .collect()
-    }
-
-    /// A collections of UDP packets which give a joining `addr`
-    /// all information relating to the current server state.
-    /// Also prepares a message to all other clients informing them
-    /// of the newcomer.
-    fn prepare_welcome_packet(&mut self, snapshot: StateSnapshot) -> Vec<SendPacket> {
-        let mut snd_packets = Vec::new();
-
-        // Send all MonsterInstance information to the client
-        for monster in snapshot.monsters {
-            snd_packets.push(SendPacket {
-                addrs: vec![snapshot.addr_for],
-                is_rel: true,
-                msg: Type::NewMonster(monster.0, monster.1, monster.2).serialize(),
-            });
-        }
-
-        for player in snapshot.other_players {
-            snd_packets.push(SendPacket {
-                addrs: vec![snapshot.addr_for],
-                is_rel: true,
-                msg: Type::NewPlayer(player.0, player.1, player.2).serialize(),
-            });
-        }
-
-        for player_ts in snapshot.all_player_ts {
-            snd_packets.push(SendPacket {
-                addrs: vec![snapshot.addr_for],
-                is_rel: true,
-                msg: Type::Moved(player_ts.0, player_ts.1).serialize(),
-            });
-        }
-
-        // Send to all connected clients the
-        // new player info
-        snd_packets.push(SendPacket {
-            addrs: self.all_addrs_but(snapshot.addr_for),
-            is_rel: true,
-            msg: Type::NewPlayer(
-                snapshot.new_player.0,
-                snapshot.new_player.1,
-                snapshot.new_player.2,
-            )
-            .serialize(),
-        });
-        // Send the Welcome packet to the incoming client,
-        // which contains the dungeon information
-        snd_packets.push(SendPacket {
-            addrs: vec![snapshot.addr_for],
-            is_rel: true,
-            msg: Type::Welcome(snapshot.new_player.0, snapshot.dungeon.serialize()).serialize(),
-        });
-
-        snd_packets
     }
 }

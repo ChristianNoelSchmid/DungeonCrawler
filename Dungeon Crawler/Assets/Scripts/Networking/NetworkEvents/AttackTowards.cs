@@ -9,11 +9,11 @@ namespace DungeonCrawler.Networking.NetworkEvents
     /// NetworkEvent representing a Client that
     /// has pinged the Server
     /// </summary>
-    public class AttkTowards : NetworkEvent 
+    public class AttackTowards : NetworkEvent 
     {
         public DataModel<PositionModel> Model { get; set; }
-        public AttkTowards() => Model = null;
-        public AttkTowards(string value)
+        public AttackTowards() => Model = null;
+        public AttackTowards(string value)
         {
             string [] args = value.Split(new string[] { "::" }, StringSplitOptions.None);
             Model = new DataModel<PositionModel>
@@ -26,6 +26,6 @@ namespace DungeonCrawler.Networking.NetworkEvents
                 },
             };
         }
-        public string CreateString() => $"AttkTowards::{Model.Serialize()}";
+        public string CreateString() => $"Combat::AttackTowards::{Model.Serialize()}";
     }
 }
