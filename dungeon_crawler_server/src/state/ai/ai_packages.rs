@@ -9,7 +9,7 @@ use crossbeam::channel::Sender;
 
 use crate::{
     events::{commands::cmd::Command, manager::SendTo},
-    state::{transforms::world_stage::WorldStage, types::ResponseType},
+    state::{transforms::world_stage::WorldStage},
 };
 use std::time::Duration;
 

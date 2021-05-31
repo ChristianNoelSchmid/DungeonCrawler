@@ -25,7 +25,7 @@ pub enum SyncCommand {
 
     // Server Synchronization
     CreatePlayer(SocketAddr, String),
-    WelcomePlayer(SocketAddr, u32, String, Vec2),
+    AssignPlayerId(SocketAddr, u32),
 }
 
 impl Serialize for SyncCommand {
@@ -48,7 +48,7 @@ impl Serialize for SyncCommand {
 
             // For the SyncCommands that aren't ever sent to clients,
             // return an empty String
-            _ => "".to_string()
+            _ => "".to_string(),
         }
     }
 }

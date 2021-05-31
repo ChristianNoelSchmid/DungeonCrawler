@@ -4,22 +4,15 @@
 
 use std::time::{Duration, Instant};
 
+use crossbeam::channel::Sender;
 use rand::{prelude::IteratorRandom, thread_rng};
 
-use crate::{
-    astar::{find_shortest_path, visible_actors},
-    events::{
-        commands::{cmd::Command, combat::CombatCommand},
-        manager::SendTo,
-    },
-    state::{
+use crate::{astar::{find_shortest_path, visible_actors}, events::{commands::{cmd::Command, combat::CombatCommand, status::StatusCommand, sync::SyncCommand}, manager::SendTo}, state::{
         actor::ActorId,
         ai::ai_packages::AIPackageResult,
-        traits::{AttackStatus, AI},
+        traits::{AttackResult, AttackStatus, AI},
         transforms::world_stage::WorldStage,
-        types::ResponseType,
-    },
-};
+    }};
 
 use super::ai_packages::IndependentPackage;
 
@@ -37,7 +30,7 @@ pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
     },
     // For each step, traverse to target. If the Entity
     // sees a Player, engage in combat
-    step_next: |world_stage, entity, _| {
+    step_next: |world_stage, entity, s_to_event| {
         let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
         let vis_pls = visible_actors(
             world_stage,
@@ -51,7 +44,7 @@ pub static IDLE: IndependentPackage<dyn AI> = IndependentPackage {
             return AIPackageResult::Abort;
         }
 
-        translate_ai(world_stage, entity);
+        translate_ai(world_stage, entity, s_to_event);
 
         AIPackageResult::Continue
     },
@@ -109,16 +102,47 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
             match entity.charge_attk() {
                 AttackStatus::Charged => {
                     if ent_tr.pos.distance(target_tr.pos) <= 1.0 {
-                        world_stage.try_attk(entity.id(), target_id);
+                        match world_stage.try_attk(entity.id(), target_id) {
+                            AttackResult::Hit(defd_id, health) => {
+                                s_to_event
+                                    .send((
+                                        Command::Combat(CombatCommand::Hit(
+                                            entity.id(),
+                                            defd_id,
+                                            health,
+                                        )),
+                                        SendTo::All(false),
+                                    ))
+                                    .unwrap();
+                                if health <= 0 {
+                                    s_to_event
+                                        .send((
+                                            Command::Status(StatusCommand::Dead(defd_id)),
+                                            SendTo::All(true),
+                                        ))
+                                        .unwrap();
+                                }
+                            }
+                            AttackResult::Miss(defd_id) => s_to_event
+                                .send((
+                                    Command::Combat(CombatCommand::Miss(entity.id(), defd_id)),
+                                    SendTo::All(false),
+                                ))
+                                .unwrap(),
+                        }
                     } else {
                         if let Some(pos) = follow_target_pos {
                             s_to_event
                                 .send((
                                     Command::Combat(CombatCommand::AttackTowards(entity.id(), pos)),
-                                    SendTo::All,
+                                    SendTo::All(true),
                                 ))
                                 .unwrap();
                             world_stage.move_pos(entity.id(), pos);
+                            s_to_event.send((
+                                Command::Sync(SyncCommand::Moved(entity.id(), world_stage.actor(entity.id()).unwrap().tr)),
+                                SendTo::All(false)
+                            )).unwrap();
                         }
                     }
                     return AIPackageResult::Continue;
@@ -130,7 +154,7 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
                     s_to_event
                         .send((
                             Command::Combat(CombatCommand::Charging(entity.id())),
-                            SendTo::All,
+                            SendTo::All(false),
                         ))
                         .unwrap();
                     return AIPackageResult::Continue;
@@ -182,14 +206,14 @@ pub static MELEE_COMBAT: IndependentPackage<dyn AI> = IndependentPackage {
                 world_stage.look_at(entity.id(), target_tr.pos);
             }
         }
-        translate_ai(world_stage, entity)
+        translate_ai(world_stage, entity, s_to_event)
     },
     pick_count: 1,
     intv_range: (Duration::from_secs(2000), Duration::from_secs(3000)),
 };
 
 // The translation AI which Entities use to move from step to step
-fn translate_ai(world_stage: &mut WorldStage, entity: &mut dyn AI) -> AIPackageResult {
+fn translate_ai(world_stage: &mut WorldStage, entity: &mut dyn AI, s_to_event: &Sender<(Command, SendTo)>) -> AIPackageResult {
     let ent_tr = world_stage.actor(entity.id()).unwrap().tr;
     if entity.charge_step() {
         if let Some(next) = entity.next_step() {
@@ -198,6 +222,11 @@ fn translate_ai(world_stage: &mut WorldStage, entity: &mut dyn AI) -> AIPackageR
                     let target = *target;
                     entity.set_path(find_shortest_path(world_stage, ent_tr.pos, target));
                 }
+            } else {
+                s_to_event.send((
+                    Command::Sync(SyncCommand::Moved(entity.id(), world_stage.actor(entity.id()).unwrap().tr)),
+                    SendTo::All(false),
+                )).unwrap();
             }
         }
     }

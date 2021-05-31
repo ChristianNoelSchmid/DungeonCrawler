@@ -135,7 +135,8 @@ namespace DungeonCrawler.Networking
         /// <returns>The NetworkEvent, with parsed data</returns>
         private NetworkEvent ParseEvent(string text)
         {
-            var command = text.Split(new string [] { "::" }, 2, StringSplitOptions.None)[1];
+            Debug.Log(text);
+            var command = text.Split(new string [] { "::" }, 3, StringSplitOptions.None)[1];
             var args = text.Substring(text.IndexOf(command) + command.Length + 2);
             try 
             {
@@ -242,13 +243,14 @@ namespace DungeonCrawler.Networking
                     break;
 
                 case DungeonComplete _:
+
+                    _actorGen.ResetAll();
                     _watchPane.SetVisible(false);
                     _resultsPane.SetVisible(true);
                     break;
 
                 case Reconnect _:
 
-                    _actorGen.ResetAll();
                     _dungeonGen.GetComponent<LightGenerator>().Initialized = false;
                     _datagramHandler.SendDatagram(
                         new Hello { Player = new Player { Name = _playerName } }.CreateString(),

@@ -6,7 +6,6 @@ pub mod events {
         pub mod sync;
     }
     pub mod manager;
-    pub mod types;
 }
 
 pub mod state {

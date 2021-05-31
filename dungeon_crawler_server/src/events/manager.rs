@@ -5,14 +5,14 @@ use dungeon_generator::inst::Dungeon;
 use simple_serializer::Serialize;
 use udp_server::packets::{PacketReceiver, PacketSender, ReceivePacket, SendPacket};
 
-use crate::{events::types::Type, state::manager::StateManager};
+use crate::{state::manager::StateManager};
 
 use super::commands::{cmd::Command, sync::SyncCommand};
 
 pub enum SendTo {
-    One(u32),
-    AllBut(u32),
-    All,
+    One(u32, bool),
+    AllBut(u32, bool),
+    All(bool),
 }
 
 ///
@@ -107,7 +107,10 @@ impl EventManager {
     /// Parses the `msg` received from the DatagramHandler from client `addr`,
     /// determing the appropriate course of action, and performing it.
     ///
-    fn parse_client_msg(&mut self, (addr, msg): (SocketAddr, String)) -> Result<(), SendError<Command>> {
+    fn parse_client_msg(
+        &mut self,
+        (addr, msg): (SocketAddr, String),
+    ) -> Result<(), SendError<Command>> {
         if let Ok(cmd) = Command::from_str(&msg) {
             self.s_to_state.send(match cmd {
                 // If a `Hello` message was sent, CreatePlayer must
@@ -115,12 +118,9 @@ impl EventManager {
                 // Id. addr is given so the StateManager can send the
                 // correct Id to the correct associate address.
                 Command::Sync(SyncCommand::Hello(name)) => {
-                    Command::Sync(SyncCommand::CreatePlayer(
-                        addr,
-                        name
-                    ))
-                },
-                _ => cmd
+                    Command::Sync(SyncCommand::CreatePlayer(addr, name))
+                }
+                _ => cmd,
             })?;
         }
         Ok(())
@@ -133,27 +133,38 @@ impl EventManager {
         response: Command,
         send_to: SendTo,
     ) -> Result<(), SendError<SendPacket>> {
-        // If the state registered that all Players are either dead or escaped,
-        // reset the StateManager, creating a new dungeon.
-        if let Command::Sync(SyncCommand::DungeonComplete) = response {
-            self.s_to_clients.send(SendPacket {
-                addrs: self.all_addrs(),
-                is_rel: true,
-                msg: Type::DungeonComplete.serialize(),
-            })?;
-
-            std::thread::sleep(Duration::from_secs(5));
-
-            self.state_manager =
-                StateManager::new(Dungeon::new(75, 75), 10, self.r_from_event.clone());
-            let r = self.state_manager.get_receiver();
-            self.r_from_state = r;
-            self.s_to_clients.send(SendPacket {
-                addrs: self.all_addrs(),
-                is_rel: true,
-                msg: Type::Reconnect.serialize(),
-            })?;
+        match response {
+            // If the state registered that all Players are either dead or escaped,
+            // reset the StateManager, creating a new dungeon.
+            Command::Sync(SyncCommand::DungeonComplete) => { 
+                self.create_new_state()?;
+                return Ok(()); 
+            },
+            Command::Sync(SyncCommand::AssignPlayerId(addr, id)) => {
+                self.addrs.insert(addr, id);
+                return Ok(());
+            }
+            _ => { }
         }
+        let is_rel;
+        self.s_to_clients.send(SendPacket {
+            addrs: match send_to {
+                SendTo::All(rel) => {
+                    is_rel = rel;
+                    self.all_addrs()
+                        }
+                        SendTo::AllBut(id, rel) => {
+                            is_rel = rel;
+                            self.all_addrs_but(id)
+                        }
+                        SendTo::One(id, rel) => {
+                            is_rel = rel;
+                            vec![*self.addrs.iter().find(|(_addr, test_id)| **test_id == id).unwrap().0]
+                        }
+                    },
+                    is_rel,
+                    msg: response.serialize(),
+        })?;
         Ok(())
     }
 
@@ -163,12 +174,38 @@ impl EventManager {
     }
     /// Retrieve all `SocketAddr`'s attach to the EventHandler,
     /// exepct the `addr` provided.
-    fn all_addrs_but(&self, addr: SocketAddr) -> Vec<SocketAddr> {
+    fn all_addrs_but(&self, id: u32) -> Vec<SocketAddr> {
         self.addrs
-            .clone()
-            .into_iter()
-            .filter(|(a, _)| *a != addr)
-            .map(|(k, _)| k)
+            .iter()
+            .filter(|(_, v_id)| **v_id != id)
+            .map(|(addr, _id)| *addr)
             .collect()
+    }
+
+    fn create_new_state(&mut self) -> Result<(), SendError<SendPacket>> {
+        self.s_to_clients.send(SendPacket {
+            addrs: self.all_addrs(),
+            is_rel: true,
+            msg: Command::Sync(SyncCommand::DungeonComplete).serialize(),
+        })?;
+
+        std::thread::sleep(Duration::from_secs(5));
+
+        self.state_manager = StateManager::new(Dungeon::new(75, 75), 10, self.r_from_event.clone());
+        let r = self.state_manager.get_receiver();
+        self.r_from_state = r;
+        self.s_to_clients.send(SendPacket {
+            addrs: self.all_addrs(),
+            is_rel: true,
+            msg: Command::Sync(SyncCommand::Reconnect).serialize(),
+        })?;
+
+        Ok(())
+    }
+}
+
+impl Drop for EventManager {
+    fn drop(&mut self) {
+        self.s_to_state.send(Command::Abort).unwrap();
     }
 }

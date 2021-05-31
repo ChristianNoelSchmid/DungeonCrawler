@@ -4,7 +4,7 @@ use rand::{prelude::IteratorRandom, thread_rng, RngCore};
 
 use crate::state::{
     actor::{Actor, ActorId, Status},
-    traits::Qualities,
+    traits::{AttackResult, Qualities},
 };
 
 use super::{
@@ -228,7 +228,7 @@ impl WorldStage {
     }
 
     /// Performs an 'attack' from the `attk_id` `Actor` to `defd_id` `Actor`.
-    pub fn try_attk(&mut self, attk_id: u32, defd_id: u32) {
+    pub fn try_attk(&mut self, attk_id: u32, defd_id: u32) -> AttackResult {
         // Retrieve the attacker and defender Actors
         // and the attacker's attack damage (might stat)
         let attacker = &self.actors[&attk_id];
@@ -238,16 +238,23 @@ impl WorldStage {
 
         // Test if the defender dodges the attack. If so, return a Miss.
         // Otherwise, return a Hit, with the defender's remaining health.
-        if thread_rng().next_u32() % 100 > defender.attrs().fines {
+        return if thread_rng().next_u32() % 100 > defender.attrs().fines {
             let health = &mut defender.stats().cur_health;
             *health -= attk_damage;
 
+            // Dereference health to avoid ownership errors
+            let health = *health;
+
             // If health is below 1, set defender's status to dead,
             // and inform the EventManager.
-            if *health <= 0 {
+            if health <= 0 {
                 defender.status = Status::Dead;
                 self.filled_spots.remove(&defender.tr.pos);
             }
-        }
+
+            AttackResult::Hit(defd_id, health)
+        } else {
+            AttackResult::Miss(defd_id)
+        };
     }
 }
