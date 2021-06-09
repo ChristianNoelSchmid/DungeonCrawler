@@ -1,3 +1,8 @@
+//! Instantiation implementation of Dungeon Generator
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use std::collections::{hash_set, HashSet};
 use std::fmt::Debug;
 

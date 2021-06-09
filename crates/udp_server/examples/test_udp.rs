@@ -1,3 +1,8 @@
+//! UDP Tester - sending of UUIDs via 2 Udp sockets
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use std::{net::SocketAddr, str::FromStr, time::Duration};
 
 use udp_server::{

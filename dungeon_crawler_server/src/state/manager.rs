@@ -1,3 +1,9 @@
+//! State Manager, which manages all possible
+//! state in Dungeon Crawler server
+//!
+//! Christian Schmid - June, 2021
+//! CS510 - Programming Rust
+
 use std::{collections::HashMap, time::Duration};
 
 use crate::state::{

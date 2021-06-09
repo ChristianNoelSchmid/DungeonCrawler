@@ -1,3 +1,8 @@
+//! Start function for Dungeon Event Manager
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use dungeon_crawler_server::events::manager::EventManager;
 use udp_server::manager::DatagramManager;
 

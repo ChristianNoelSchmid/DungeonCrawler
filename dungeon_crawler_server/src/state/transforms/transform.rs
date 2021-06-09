@@ -1,3 +1,8 @@
+//! Transform struct for Actor movement in State Manager
+//!
+//! Christian Schmid - May, 2021
+//! CS510 - Programming Rust
+
 use std::fmt::Display;
 
 use simple_serializer::Serialize;

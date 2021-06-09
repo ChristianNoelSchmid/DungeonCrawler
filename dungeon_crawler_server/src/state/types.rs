@@ -1,3 +1,9 @@
+//! All possible State Types (ie. messages)
+//! Associated with State Manager
+//! 
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use std::net::SocketAddr;
 
 use crate::state::snapshot::StateSnapshot;

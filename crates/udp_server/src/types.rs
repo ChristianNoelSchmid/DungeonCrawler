@@ -1,3 +1,8 @@
+//! Datagram Packet Types for Udp Datagram Manager
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use std::str::FromStr;
 
 use simple_serializer::{Deserialize, Serialize};

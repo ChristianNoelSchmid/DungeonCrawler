@@ -1,4 +1,4 @@
-//! rpg_rust - Helper functions for dungeon generation
+//! Helper functions for Dungeon Generation
 //!
 //! Christian Schmid - April 2021
 //! CS510 - Rust Programming

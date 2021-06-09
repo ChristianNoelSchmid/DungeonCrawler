@@ -1,6 +1,7 @@
 //! Collection of AI Packages that an Entity can run
 //!
-//! Christian Schmid 2021
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
 
 use std::time::{Duration, Instant};
 

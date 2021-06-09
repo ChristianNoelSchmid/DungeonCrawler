@@ -1,3 +1,8 @@
+//! Definitions of Player structs
+//!
+//! Christian Schmid - June, 2021
+//! CS510 - Programming Rust
+
 use crate::state::{
     stats::{Attributes, Stats},
     traits::Identified,

@@ -1,3 +1,8 @@
+//! Description of Actor Stats and Abilities
+//!
+//! Christian Schmid - June, 2021
+//! CS510 - Programming Rust
+
 ///
 /// A collection of health, magicka, and stamina
 /// including max and current

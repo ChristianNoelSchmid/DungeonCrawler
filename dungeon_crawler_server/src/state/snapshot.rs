@@ -1,3 +1,9 @@
+//! Snapshot of current State
+//!
+//! Christian Schmid - June, 2021
+//! CS510 - Programming Rust
+
+
 use dungeon_generator::inst::Dungeon;
 
 use std::net::SocketAddr;

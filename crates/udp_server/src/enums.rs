@@ -1,7 +1,7 @@
 //! General Enums for DatagramManager
 //!
-//! Christian Schmid 2021
-//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
 
 ///
 /// Used to synchronize the UdpHandler with its

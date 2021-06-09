@@ -1,3 +1,8 @@
+//! 2-point Vector for State Manager
+//!
+//! Christian Schmid - May, 2021
+//! CS510 - Programming Rust
+
 use std::ops::{Add, Mul, Sub};
 
 use simple_serializer::Serialize;

@@ -1,3 +1,9 @@
+//! Package Manager for AI systems in
+//! Dungeon State Manager
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 use std::time::{Duration, Instant};
 
 use crate::state::transforms::world_stage::WorldStage;

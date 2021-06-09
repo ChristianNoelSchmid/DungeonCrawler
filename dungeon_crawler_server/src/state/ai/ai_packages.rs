@@ -1,9 +1,8 @@
-//!
 //! AIPackage struct, used to express AI functionality on
 //! a given entity
 //!
 //! Christian Schmid - May, 2021
-//!
+//! CS510 - Programming Rust
 
 use crate::state::transforms::world_stage::WorldStage;
 use std::time::Duration;

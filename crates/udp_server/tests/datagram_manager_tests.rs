@@ -1,3 +1,8 @@
+//! Tests for Udp Datagram Manager
+//!
+//! Christian Schmid - June 2021
+//! CS510 - Rust Programming
+
 #[cfg(test)]
 mod datagram_handler_tests {
 
@@ -7,6 +12,7 @@ mod datagram_handler_tests {
         packets::{ReceivePacket, SendPacket},
     };
 
+    // Generates two DatagramManagers to test with
     fn gen_handlers(port1: u32, port2: u32) -> (DatagramManager, DatagramManager) {
         return (
             DatagramManager::new(port1).unwrap(),
@@ -15,23 +21,26 @@ mod datagram_handler_tests {
     }
 
     ///
-    /// Tests simple (unreliable) communication between
-    /// two DatagramHandlers.
+    /// Tests simple communication between
+    /// two DatagramManagers.
     ///
     #[test]
     fn test_send_recieve() {
         let (h1, h2) = gen_handlers(2000, 2001);
 
+        // Retrieve the senders and receivers from the Managers
         let (s1, r1) = h1.get_sender_receiver();
         let (s2, r2) = h2.get_sender_receiver();
 
+        // Send the first packet
         s1.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2001").unwrap()],
-            is_rel: true,
+            is_rel: false,
             msg: "Hello!".to_string(),
         })
         .unwrap();
 
+        // Ensure it was received by the other manager
         if let ReceivePacket::ClientMessage(addr, msg) = r2.recv().unwrap() {
             assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2000").unwrap());
             assert_eq!(msg, "Hello!");
@@ -39,13 +48,15 @@ mod datagram_handler_tests {
             panic!("Recieved ClientDropped message");
         }
 
+        // Send the second packet
         s2.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2000").unwrap()],
-            is_rel: true,
+            is_rel: false,
             msg: "Hi there!".to_string(),
         })
         .unwrap();
 
+        // Ensure it was received by the other manager
         if let ReceivePacket::ClientMessage(addr, msg) = r1.recv().unwrap() {
             assert_eq!(addr, SocketAddr::from_str("127.0.0.1:2001").unwrap());
             assert_eq!(msg, "Hi there!");
@@ -54,6 +65,9 @@ mod datagram_handler_tests {
         }
     }
 
+    /// Sends 100 datagrams between two managers,
+    /// ensuring that each one is successfully recieved,
+    /// in order.
     #[test]
     fn test_bulk_send() {
         let (h1, h2) = gen_handlers(2004, 2005);
@@ -61,6 +75,7 @@ mod datagram_handler_tests {
         let (s1, r1) = h1.get_sender_receiver();
         let (s2, r2) = h2.get_sender_receiver();
 
+        // Send 50 from the first manager
         thread::spawn(move || {
             for _ in 0..50 {
                 s1.send(SendPacket {
@@ -74,6 +89,7 @@ mod datagram_handler_tests {
         .join()
         .unwrap();
 
+        // Send 50 from the second manager
         thread::spawn(move || {
             for _ in 0..50 {
                 s2.send(SendPacket {
@@ -89,6 +105,8 @@ mod datagram_handler_tests {
 
         thread::spawn(move || {
             for _ in 0..50 {
+                // This will panic if a message is not
+                // sent successfully
                 r1.recv().unwrap();
             }
         })
@@ -97,6 +115,8 @@ mod datagram_handler_tests {
 
         thread::spawn(move || {
             for _ in 0..50 {
+                // This will panic if a message is not
+                // sent succesfully
                 r2.recv().unwrap();
             }
         })
@@ -151,7 +171,8 @@ mod datagram_handler_tests {
         let (h1, h2) = gen_handlers(2006, 2007);
         let (s1, _) = h1.get_sender_receiver();
         let (_, r2) = h2.get_sender_receiver();
-
+        
+        // Send a datagram
         s1.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2007").unwrap()],
             is_rel: true,
@@ -163,6 +184,8 @@ mod datagram_handler_tests {
         // Sleep until timeout
         std::thread::sleep(Duration::from_secs_f32(5.5));
 
+        // Assert that the manager which received the message has informed the
+        // program that a client has been dropped.
         assert_eq!(
             r2.recv().unwrap(),
             ReceivePacket::DroppedClient(SocketAddr::from_str("127.0.0.1:2006").unwrap())

@@ -1,3 +1,9 @@
+//! World Stage for all Actors in State Manager
+//!
+//! Christian Schmid - May, 2021
+//! CS510 - Programming Rust
+
+
 use std::collections::{HashMap, HashSet};
 
 use crossbeam::channel::Sender;
