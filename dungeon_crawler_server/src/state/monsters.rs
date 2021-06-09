@@ -3,7 +3,6 @@
 //! Christian Schmid - June, 2021
 //! CS510 - Programming Rust
 
-
 use std::time::{Duration, Instant};
 
 use simple_serializer::Serialize;

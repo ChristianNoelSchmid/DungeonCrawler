@@ -1,5 +1,5 @@
 //! State Manager tests
-//! 
+//!
 //! Christian Schmid - June 2021
 //! CS510 - Rust Programming
 
@@ -20,9 +20,9 @@ mod event_handler_tests {
     };
     use ReceivePacket::ClientMessage;
 
-    /// Generates a `DatagramManager` and `EventManager` on `port1` and `port2`. 
+    /// Generates a `DatagramManager` and `EventManager` on `port1` and `port2`.
     /// The `DatagramManager` is set up ready to send information to the newly
-    /// created `EventManager` given the returned `SocketAddr`. 
+    /// created `EventManager` given the returned `SocketAddr`.
     fn gen_managers(port1: u32, port2: u32) -> (DatagramManager, SocketAddr) {
         let dgm = DatagramManager::new(port1).unwrap();
 

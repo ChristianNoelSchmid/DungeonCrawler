@@ -1,5 +1,5 @@
 //! All traits associated with Entities in State Manager
-//! 
+//!
 //! Christian Schmid - June 2021
 //! CS510 - Rust Programming
 

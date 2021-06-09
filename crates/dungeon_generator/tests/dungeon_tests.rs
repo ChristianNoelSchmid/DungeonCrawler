@@ -1,5 +1,5 @@
 //! Test for the DungeonGenerator
-//! 
+//!
 //! Christian Schmid - June 2021
 //! CS510 - Rust Programming
 
@@ -16,7 +16,6 @@ fn test_100() {
     // Function for determining whether the entrance
     // eventually traverses to the exit
     fn is_dungeon_valid(dun: Dungeon) -> bool {
-
         // The list of paths already visited.
         let mut visited = HashSet::new();
         // The list of next paths to visit
@@ -28,9 +27,8 @@ fn test_100() {
 
         // While all paths have not been searched,
         // take the current one and check its adjacent
-        // neighbors. 
+        // neighbors.
         while let Some(point) = next.pop() {
-
             // If the current path is the exit, return true
             if point == dun.exit {
                 return true;

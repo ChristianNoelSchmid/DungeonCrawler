@@ -1,4 +1,4 @@
-//! A* / Line-of-Sight Pathfinding 
+//! A* / Line-of-Sight Pathfinding
 //! Implementation on Square Map
 //!
 //! Christian Schmid, May 2021

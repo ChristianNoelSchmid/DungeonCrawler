@@ -144,7 +144,8 @@ mod datagram_handler_tests {
                     addrs: vec![SocketAddr::from_str("127.0.0.1:2002").unwrap()],
                     is_rel: true,
                     msg: i.to_string(),
-                }).unwrap();
+                })
+                .unwrap();
                 std::thread::sleep(Duration::from_millis(100));
             }
         });
@@ -171,7 +172,7 @@ mod datagram_handler_tests {
         let (h1, h2) = gen_handlers(2006, 2007);
         let (s1, _) = h1.get_sender_receiver();
         let (_, r2) = h2.get_sender_receiver();
-        
+
         // Send a datagram
         s1.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2007").unwrap()],

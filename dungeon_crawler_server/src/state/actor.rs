@@ -13,7 +13,7 @@ use super::{
     traits::Qualities,
 };
 
-/// 
+///
 /// Defines the status of an `Actor` - whether
 /// they are `Active`, `Dead`, or `Escaped` (from the
 /// `Dungeon`)
