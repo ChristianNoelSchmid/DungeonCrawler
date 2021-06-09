@@ -7,7 +7,7 @@ mod event_handler_tests {
         time::{Duration, Instant},
     };
 
-    use dungeon_crawler_server::events::{manager::EventManager, types::Type};
+    use dungeon_crawler_server::events::{commands::{cmd::Command, sync::SyncCommand}, manager::EventManager};
     use simple_serializer::Serialize;
     use udp_server::{
         manager::DatagramManager,
@@ -39,7 +39,7 @@ mod event_handler_tests {
         s2.send(SendPacket {
             addrs: vec![evt_addr],
             is_rel: true,
-            msg: Type::Hello("Sam".to_string()).serialize(),
+            msg: Command::Sync(SyncCommand::Hello("Sam".to_string())).serialize(),
         })
         .unwrap();
         thread::sleep(Duration::from_secs_f32(1.5));
@@ -47,7 +47,7 @@ mod event_handler_tests {
         s1.send(SendPacket {
             addrs: vec![evt_addr],
             is_rel: true,
-            msg: Type::Hello("Phil".to_string()).serialize(),
+            msg: Command::Sync(SyncCommand::Hello("Phil".to_string())).serialize(),
         })
         .unwrap();
 
@@ -56,7 +56,7 @@ mod event_handler_tests {
             if Instant::now() - now > Duration::from_secs(3) {
                 break false;
             } else if let Ok(ClientMessage(_, msg)) = r1.try_recv() {
-                if msg.starts_with("Welcome::") {
+                if msg.starts_with("Sync::Welcome::") {
                     break true;
                 }
             }
