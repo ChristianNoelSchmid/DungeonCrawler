@@ -35,7 +35,7 @@ mod datagram_handler_tests {
         // Send the first packet
         s1.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2001").unwrap()],
-            is_rel: false,
+            is_rel: true,
             msg: "Hello!".to_string(),
         })
         .unwrap();
@@ -51,7 +51,7 @@ mod datagram_handler_tests {
         // Send the second packet
         s2.send(SendPacket {
             addrs: vec![SocketAddr::from_str("127.0.0.1:2000").unwrap()],
-            is_rel: false,
+            is_rel: true,
             msg: "Hi there!".to_string(),
         })
         .unwrap();
